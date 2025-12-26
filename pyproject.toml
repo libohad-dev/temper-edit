@@ -1,0 +1,71 @@
+# SPDX-FileCopyrightText: 2025 Ohad Livne <libohad-dev@proton.me>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+[project]
+name = "temper-edit"
+version = "0.1.0"
+description = "Perform atomic edit of files through a temporary copy"
+authors = [
+  {name = "Ohad Livne", email = "libohad-dev@proton.me"}
+]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  # keep-sorted start
+  "pydantic >=2.12, <3",
+  # keep-sorted end
+]
+
+[dependency-groups]
+dev = [
+  # keep-sorted start
+  "case-converter >=1.2.0, <2",
+  "debugpy >=1.8.14, <2",
+  "pytest >=8.4.0, <9",
+  "pytest-cov >=6.2.1, <7",
+  # keep-sorted end
+]
+
+[tool.coverage.run]
+omit = [
+  "make.py",
+]
+
+[tool.mypy]
+plugins = [
+  "pydantic.mypy"
+]
+
+strict = true
+warn_unreachable = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
+[tool.ruff.lint]
+select = [
+    # keep-sorted start
+    "B",  # flake8-bugbear
+    "I",  # isort
+    "PTH",  # flake8-use-pathlib
+    "RET",  # flake8-return
+    "SIM",  # flake8-simplify
+    "UP",  # pyupgrade
+    # keep-sorted end
+    # keep-sorted start
+    "F401",  # remove unused imports
+    # keep-sorted end
+]
+ignore = [
+    # keep-sorted start
+    "RET505",  # Unnecessary branch after return
+    "RET506",  # Unnecessary branch after raise
+    "RET507",  # Unnecessary branch after continue
+    "RET508",  # Unnecessary branch after break
+    # keep-sorted end
+]

@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: 2025 Ohad Livne <libohad-dev@proton.me>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+repos:
+# keep-sorted start
+- repo: https://github.com/Yelp/detect-secrets
+  rev: v1.5.0
+  hooks:
+  - id: detect-secrets
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.9.9
+  hooks:
+  # keep-sorted start
+  - id: ruff
+    args: [ --fix ]
+  - id: ruff-format
+  # keep-sorted end
+- repo: https://github.com/fsfe/reuse-tool
+  rev: v5.0.2
+  hooks:
+  - id: reuse
+- repo: https://github.com/google/keep-sorted
+  rev: v0.6.0
+  hooks:
+  - id: keep-sorted
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.15.0
+  hooks:
+  - id: mypy
+    additional_dependencies:
+    # keep-sorted start
+    - pydantic>=2.10.6,<3
+    - pytest>=8.4.0,<9
+    # keep-sorted end
+    args: [ --strict ]
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+  # keep-sorted start
+  - id: check-ast
+  - id: check-executables-have-shebangs
+  - id: check-toml
+  - id: check-yaml
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+  # keep-sorted end
+- repo: https://github.com/syntaqx/git-hooks
+  rev: v0.0.18
+  hooks:
+  # keep-sorted start
+  - id: forbid-binary
+  - id: shellcheck
+  # keep-sorted end
+- repo: local
+  hooks:
+  # keep-sorted start
+  # - id: check-coverage
+  #   name: Code must have 100% test coverage
+  #   entry: make check-coverage
+  #   language: system
+  #   pass_filenames: false
+  - id: remake-makefile
+    name: Regenerate the Makefile from the Python implementation
+    entry: uv run python make.py makefile
+    language: system
+    pass_filenames: false
+  # keep-sorted end
+# keep-sorted end
