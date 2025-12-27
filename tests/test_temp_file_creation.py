@@ -19,6 +19,12 @@ def setup_container() -> DockerContainer:
     return DockerContainer(
         image=TEST_IMAGE,
         command=DEFAULT_COMMAND,
+        # keep-sorted start
+        auto_remove=True,
+        network_mode="none",
+        read_only=True,
+        remove=True,
+        # keep-sorted end
     )
 
 
