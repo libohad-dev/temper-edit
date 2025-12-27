@@ -55,11 +55,11 @@ repos:
 - repo: local
   hooks:
   # keep-sorted start
-  # - id: check-coverage
-  #   name: Code must have 100% test coverage
-  #   entry: make check-coverage
-  #   language: system
-  #   pass_filenames: false
+  - id: check-coverage
+    name: Code must have 100% test coverage
+    entry: make check-coverage
+    language: system
+    pass_filenames: false
   - id: remake-makefile
     name: Regenerate the Makefile from the Python implementation
     entry: uv run python make.py makefile
