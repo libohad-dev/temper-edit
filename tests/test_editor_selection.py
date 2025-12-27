@@ -10,7 +10,7 @@ from temper_edit.exceptions import ConfigError
 
 
 def test_no_editor_configured() -> None:
-    with pytest.raises(ConfigError):
+    with pytest.raises(ConfigError, match="No editor configured"):
         _ = select_editor(EditorConfig())
 
 
