@@ -23,9 +23,7 @@ def test_select_visual_envvar() -> None:
 
 
 def test_select_sudo_editor_envvar() -> None:
-    assert select_editor(
-        EditorConfig(EDITOR="foo", VISUAL="bar", SUDO_EDITOR="baz")
-    ) == ["baz"]
+    assert select_editor(EditorConfig(EDITOR="foo", VISUAL="bar", SUDO_EDITOR="baz")) == ["baz"]
 
 
 def test_complex_command() -> None:
@@ -33,8 +31,4 @@ def test_complex_command() -> None:
 
 
 def test_complex_command_containing_whitespaces() -> None:
-    assert select_editor(EditorConfig(EDITOR='foo --bar "b a z"')) == [
-        "foo",
-        "--bar",
-        "b a z",
-    ]
+    assert select_editor(EditorConfig(EDITOR='foo --bar "b a z"')) == ["foo", "--bar", "b a z"]

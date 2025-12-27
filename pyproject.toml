@@ -54,6 +54,9 @@ init_typed = true
 warn_required_dynamic_aliases = true
 warn_untyped_fields = true
 
+[tool.ruff]
+line-length = 120
+
 [tool.ruff.lint]
 select = [
     # keep-sorted start
