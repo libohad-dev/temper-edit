@@ -36,7 +36,6 @@ dev = [
 [tool.coverage.run]
 omit = [
   "make.py",
-  "tests/*",
 ]
 
 [tool.mypy]

@@ -36,6 +36,13 @@ def parse_output(res: ExecResult) -> str:
         return cast(bytes, res.output).decode("utf-8").strip()
 
 
+def test_failed_command(container: DockerContainer) -> None:
+    with pytest.raises(RuntimeError):
+        _ = parse_output(container.exec(["false"]))
+    with pytest.raises(RuntimeError):
+        _ = parse_output(container.exec(["foobar"]))
+
+
 def test_basic_tempfile_permissions(container: DockerContainer) -> None:
     tempfile = parse_output(container.exec(["mktemp"]))
 
