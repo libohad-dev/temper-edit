@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2025 Ohad Livne <libohad-dev@proton.me>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+FROM docker.io/library/python:3.14.2-alpine3.23
+
+ENTRYPOINT ["/bin/sleep"]
+CMD ["infinity"]

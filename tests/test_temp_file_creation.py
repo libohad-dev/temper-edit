@@ -4,30 +4,32 @@
 
 import ast
 import os
+from collections.abc import Iterator
+from pathlib import Path
 from typing import cast
 
 import pytest
 from docker.models.containers import ExecResult  # type: ignore[import-untyped]
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
+from testcontainers.core.image import DockerImage  # type: ignore[import-untyped]
 
 from temper_edit.file_model import FileStat
 
-TEST_IMAGE = "docker.io/library/python:3.14.2-alpine3.23"
-DEFAULT_COMMAND = ["sleep", "infinity"]
-
 
 @pytest.fixture
-def container() -> DockerContainer:
-    with DockerContainer(
-        image=TEST_IMAGE,
-        command=DEFAULT_COMMAND,
-        # keep-sorted start
-        auto_remove=True,
-        network_mode="none",
-        read_only=True,
-        remove=True,
-        # keep-sorted end
-    ) as test_container:
+def container() -> Iterator[DockerContainer]:
+    with (
+        DockerImage(path=Path(__file__).parent, dockerfile_path="Containerfile") as image,
+        DockerContainer(
+            str(image),
+            # keep-sorted start
+            auto_remove=True,
+            network_mode="none",
+            read_only=True,
+            remove=True,
+            # keep-sorted end
+        ) as test_container,
+    ):
         yield test_container
 
 
