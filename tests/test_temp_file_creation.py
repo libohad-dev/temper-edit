@@ -6,6 +6,7 @@ import ast
 import os
 from typing import cast
 
+import pytest
 from docker.models.containers import ExecResult  # type: ignore[import-untyped]
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
 
@@ -15,8 +16,9 @@ TEST_IMAGE = "docker.io/library/python:3.14.2-alpine3.23"
 DEFAULT_COMMAND = ["sleep", "infinity"]
 
 
-def setup_container() -> DockerContainer:
-    return DockerContainer(
+@pytest.fixture
+def container() -> DockerContainer:
+    with DockerContainer(
         image=TEST_IMAGE,
         command=DEFAULT_COMMAND,
         # keep-sorted start
@@ -25,7 +27,8 @@ def setup_container() -> DockerContainer:
         read_only=True,
         remove=True,
         # keep-sorted end
-    )
+    ) as test_container:
+        yield test_container
 
 
 def parse_output(res: ExecResult) -> str:
@@ -42,14 +45,13 @@ def get_file_stat(container: DockerContainer, filename: str) -> FileStat:
     return FileStat.from_stat_results(sr)
 
 
-def test_basic_tempfile_permissions() -> None:
-    with setup_container() as container:
-        tempfile = parse_output(container.exec(["mktemp"]))
-        filestat = get_file_stat(container, tempfile)
+def test_basic_tempfile_permissions(container: DockerContainer) -> None:
+    tempfile = parse_output(container.exec(["mktemp"]))
+    filestat = get_file_stat(container, tempfile)
 
-        assert filestat.model_dump(exclude={"mtime"}) == {
-            "size": 0,
-            "mode": 0o600,
-            "user": 0,
-            "group": 0,
-        }
+    assert filestat.model_dump(exclude={"mtime"}) == {
+        "size": 0,
+        "mode": 0o600,
+        "user": 0,
+        "group": 0,
+    }
