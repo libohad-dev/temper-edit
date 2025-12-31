@@ -8,7 +8,7 @@ from collections.abc import Callable
 type Target = Callable[[], None]
 targets: dict[str, tuple[str, Target]] = {}
 
-PYTEST_BASE_COMMAND = ["pytest", "--cov", "."]
+PYTEST_BASE_COMMAND = ["pytest", "-vv", "--cov", "."]
 
 
 def target(description: str) -> Callable[[Target], Target]:
