@@ -65,7 +65,7 @@ def list_pragmas() -> None:
     pragma_lines = pragmas.splitlines()
     pragma_files = {line.partition(":")[0] for line in pragma_lines}
     num_lines = "one match" if len(pragma_lines) == 1 else f"{len(pragma_lines)} matches"
-    num_files = "one file" if len(pragma_files) == 1 else f"{len(pragma_files)} file"
+    num_files = "one file" if len(pragma_files) == 1 else f"{len(pragma_files)} files"
     print(f"Found {num_lines} in {num_files}")
 
 
