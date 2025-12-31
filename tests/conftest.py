@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Ohad Livne <libohad-dev@proton.me>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
+from testcontainers.core.image import DockerImage  # type: ignore[import-untyped]
+
+
+@pytest.fixture
+def container() -> Iterator[DockerContainer]:
+    with (
+        DockerImage(
+            path=Path(__file__).parent.parent,
+            # keep-sorted start
+            dockerfile_path="tests/Containerfile",
+            forcerm=True,
+            rm=True,
+            squash=True,
+            # keep-sorted end
+        ) as image,
+        DockerContainer(
+            str(image),
+            # keep-sorted start
+            auto_remove=True,
+            network_mode="none",
+            read_only=True,
+            remove=True,
+            # keep-sorted end
+        ) as test_container,
+    ):
+        yield test_container
