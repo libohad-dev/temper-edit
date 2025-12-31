@@ -2,7 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-FROM docker.io/library/python:3.14.2-alpine3.23
+ARG IMAGE_TAG
+FROM docker.io/library/python:${IMAGE_TAG}
 
 RUN adduser -D -u 1000 user
 
