@@ -8,6 +8,8 @@ from collections.abc import Callable
 type Target = Callable[[], None]
 targets: dict[str, tuple[str, Target]] = {}
 
+PYTEST_BASE_COMMAND = ["pytest", "--cov", "."]
+
 
 def target(description: str) -> Callable[[Target], Target]:
     def register_target(tgt: Target) -> Target:
@@ -30,7 +32,7 @@ def execute(args: list[str], capture_output: bool = True) -> str:
 
 @target("Verify that the code has full test coverage")
 def check_coverage() -> None:
-    execute(["pytest", "--cov", "--cov-fail-under=100", "."], capture_output=False)
+    execute(PYTEST_BASE_COMMAND + ["--cov-fail-under=100"], capture_output=False)
 
 
 @target("Find all the uses of linting-avoiding pragmas in the code")
@@ -87,12 +89,12 @@ def makefile() -> None:
 
 @target("Run the full test suite and report the code coverage")
 def test() -> None:
-    execute(["pytest", "--cov", "."], capture_output=False)
+    execute(PYTEST_BASE_COMMAND, capture_output=False)
 
 
 @target("Run the full test suite and open the coverage report in a browser")
 def test_html() -> None:
-    execute(["pytest", "--cov", "--cov-report=html", "."], capture_output=False)
+    execute(PYTEST_BASE_COMMAND + ["--cov-report=html"], capture_output=False)
     execute(["xdg-open", "htmlcov/index.html"])
 
 
