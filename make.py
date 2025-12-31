@@ -37,9 +37,7 @@ def check_coverage() -> None:
 def list_pragmas() -> None:
     from pathlib import Path
 
-    tracked_files = sorted(
-        execute(["git", "ls-tree", "-r", "--name-only", "HEAD"]).split()
-    )
+    tracked_files = sorted(execute(["git", "ls-tree", "-r", "--name-only", "HEAD"]).split())
     this_file = str(Path(__file__).relative_to(Path.cwd()))
     tracked_files.remove(this_file)
     try:
@@ -64,9 +62,7 @@ def list_pragmas() -> None:
     print(pragmas)
     pragma_lines = pragmas.splitlines()
     pragma_files = {line.partition(":")[0] for line in pragma_lines}
-    num_lines = (
-        "one match" if len(pragma_lines) == 1 else f"{len(pragma_lines)} matches"
-    )
+    num_lines = "one match" if len(pragma_lines) == 1 else f"{len(pragma_lines)} matches"
     num_files = "one file" if len(pragma_files) == 1 else f"{len(pragma_files)} file"
     print(f"Found {num_lines} in {num_files}")
 
