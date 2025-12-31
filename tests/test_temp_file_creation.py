@@ -17,9 +17,9 @@ from testcontainers.core.image import DockerImage  # type: ignore[import-untyped
 def container() -> Iterator[DockerContainer]:
     with (
         DockerImage(
-            path=Path(__file__).parent,
+            path=Path(__file__).parent.parent,
             # keep-sorted start
-            dockerfile_path="Containerfile",
+            dockerfile_path="tests/Containerfile",
             forcerm=True,
             rm=True,
             squash=True,
