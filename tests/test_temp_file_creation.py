@@ -15,7 +15,15 @@ from testcontainers.core.image import DockerImage  # type: ignore[import-untyped
 @pytest.fixture
 def container() -> Iterator[DockerContainer]:
     with (
-        DockerImage(path=Path(__file__).parent, dockerfile_path="Containerfile") as image,
+        DockerImage(
+            path=Path(__file__).parent,
+            # keep-sorted start
+            dockerfile_path="Containerfile",
+            forcerm=True,
+            rm=True,
+            squash=True,
+            # keep-sorted end
+        ) as image,
         DockerContainer(
             str(image),
             # keep-sorted start
