@@ -22,6 +22,9 @@ dependencies = [
   # keep-sorted end
 ]
 
+[project.scripts]
+temper-edit = "temper_edit.cli:run"
+
 [dependency-groups]
 dev = [
   # keep-sorted start
