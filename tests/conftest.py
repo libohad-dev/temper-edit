@@ -15,9 +15,8 @@ def image() -> Iterator[DockerImage]:
     with DockerImage(
         path=Path(__file__).parent.parent,
         # keep-sorted start
+        clean_up=False,
         dockerfile_path="tests/Containerfile",
-        forcerm=True,
-        rm=True,
         squash=True,
         # keep-sorted end
     ) as test_image:
