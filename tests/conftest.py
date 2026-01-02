@@ -11,25 +11,28 @@ from testcontainers.core.image import DockerImage  # type: ignore[import-untyped
 
 
 @pytest.fixture
-def container() -> Iterator[DockerContainer]:
-    with (
-        DockerImage(
-            path=Path(__file__).parent.parent,
-            # keep-sorted start
-            dockerfile_path="tests/Containerfile",
-            forcerm=True,
-            rm=True,
-            squash=True,
-            # keep-sorted end
-        ) as image,
-        DockerContainer(
-            str(image),
-            # keep-sorted start
-            auto_remove=True,
-            network_mode="none",
-            read_only=True,
-            remove=True,
-            # keep-sorted end
-        ) as test_container,
-    ):
+def image() -> Iterator[DockerImage]:
+    with DockerImage(
+        path=Path(__file__).parent.parent,
+        # keep-sorted start
+        dockerfile_path="tests/Containerfile",
+        forcerm=True,
+        rm=True,
+        squash=True,
+        # keep-sorted end
+    ) as test_image:
+        yield test_image
+
+
+@pytest.fixture
+def container(image: DockerImage) -> Iterator[DockerContainer]:
+    with DockerContainer(
+        str(image),
+        # keep-sorted start
+        auto_remove=True,
+        network_mode="none",
+        read_only=True,
+        remove=True,
+        # keep-sorted end
+    ) as test_container:
         yield test_container
