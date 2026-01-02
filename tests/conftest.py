@@ -18,6 +18,7 @@ def image() -> Iterator[DockerImage]:
         clean_up=False,
         dockerfile_path="tests/Containerfile",
         squash=True,
+        tag="temper-edit-test",
         # keep-sorted end
     ) as test_image:
         yield test_image
