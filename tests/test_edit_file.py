@@ -12,6 +12,14 @@ from tests.masks import supermasks
 from tests.utils import parse_output
 
 
+def stat_file(container: DockerContainer, filename: str) -> tuple[int, str, str]:
+    stat_result = parse_output(container.exec(["stat", "-c", "%u %U %f", filename]))
+    uid, username, file_perms_hex = stat_result.split()
+    file_perms = oct(int(file_perms_hex, 16))
+
+    return int(uid), username, file_perms
+
+
 def test_root_user_update_file_and_preserve_permissions(container: DockerContainer) -> None:
     script = textwrap.dedent(f"""\
     #! /bin/sh
@@ -28,7 +36,7 @@ def test_root_user_update_file_and_preserve_permissions(container: DockerContain
         container.exec(["chmod", octal, filename])
         container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" temper-edit {filename}'])
 
-        file_perms_hex = parse_output(container.exec(["stat", "-c", "%f", filename]))
-        file_perms = oct(int(file_perms_hex, 16))
+        uid, username, file_perms = stat_file(container=container, filename=filename)
+        assert (uid, username) == (0, "root"), f"Wrong file ownership for mode {octal}"
         assert file_perms.endswith(octal), f"Mismatched permissions for mode {octal}"
         assert parse_output(container.exec(["cat", filename])) == content, f"Wrong file content for mode {octal}"
