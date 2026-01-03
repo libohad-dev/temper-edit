@@ -5,7 +5,7 @@
 from collections.abc import Callable
 from typing import cast
 
-from docker.models.containers import ExecResult  # type: ignore[import-untyped]
+from docker.models.containers import ExecResult
 
 
 def parse_output(res: ExecResult) -> str:

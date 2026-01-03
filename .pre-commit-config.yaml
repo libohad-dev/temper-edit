@@ -33,6 +33,7 @@ repos:
     - pydantic>=2.10.6,<3
     - pytest>=8.4.0,<9
     - testcontainers>=4.13,<5
+    - types-docker>=7.1.0,<7.2
     # keep-sorted end
     args: [ --strict ]
 - repo: https://github.com/pre-commit/pre-commit-hooks
