@@ -7,19 +7,10 @@ import textwrap
 import uuid
 
 import pytest
-from docker.models.containers import ExecResult
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
 
 from tests.masks import supermasks
-from tests.utils import parse_output
-
-
-def stat_file(container: DockerContainer, filename: str) -> tuple[int, str, str]:
-    stat_result = parse_output(container.exec(["stat", "-c", "%u %U %f", filename]))
-    uid, username, file_perms_hex = stat_result.split()
-    file_perms = oct(int(file_perms_hex, 16))
-
-    return int(uid), username, file_perms
+from tests.utils import exec_as_user, parse_output, stat_file
 
 
 def test_root_user_update_file_and_preserve_permissions(container: DockerContainer) -> None:
@@ -42,10 +33,6 @@ def test_root_user_update_file_and_preserve_permissions(container: DockerContain
         assert (uid, username) == (0, "root"), f"Wrong file ownership for mode {octal}"
         assert file_perms.endswith(octal), f"Mismatched permissions for mode {octal}"
         assert parse_output(container.exec(["cat", filename])) == content, f"Wrong file content for mode {octal}"
-
-
-def exec_as_user(command: list[str], container: DockerContainer, user: str = "user") -> ExecResult:
-    return container.exec(["su", "-", user, "-c", shlex.join(command)])  # type: ignore[no-any-return]
 
 
 def test_non_root_user_update_file_and_preserve_permissions(container: DockerContainer) -> None:

@@ -2,10 +2,12 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import shlex
 from collections.abc import Callable
 from typing import cast
 
 from docker.models.containers import ExecResult
+from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
 
 
 def parse_output(res: ExecResult) -> str:
@@ -21,3 +23,15 @@ def check_exception_content(subst: str) -> Callable[[RuntimeError], bool]:
         return subst in exc_content
 
     return checker
+
+
+def stat_file(container: DockerContainer, filename: str) -> tuple[int, str, str]:
+    stat_result = parse_output(container.exec(["stat", "-c", "%u %U %f", filename]))
+    uid, username, file_perms_hex = stat_result.split()
+    file_perms = oct(int(file_perms_hex, 16))
+
+    return int(uid), username, file_perms
+
+
+def exec_as_user(command: list[str], container: DockerContainer, user: str = "user") -> ExecResult:
+    return container.exec(["su", "-", user, "-c", shlex.join(command)])  # type: ignore[no-any-return]
