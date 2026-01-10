@@ -6,7 +6,12 @@ import shutil
 from pathlib import Path
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from types import TracebackType
-from typing import Literal, Self
+from typing import Literal
+
+try:
+    from typing import Self as SandboxedFileT
+except ImportError:
+    SandboxedFileT = "SandboxedFile"  # type: ignore [assignment]
 
 from pydantic import BaseModel, ConfigDict
 
@@ -32,5 +37,5 @@ class SandboxedFile(BaseModel):
         return False
 
     @classmethod
-    def spawn(cls, filename: Path) -> Self:
+    def spawn(cls, filename: Path) -> SandboxedFileT:
         return cls(filename=filename, tempfile=NamedTemporaryFile(delete=False))
