@@ -63,7 +63,7 @@ repos:
   #   pass_filenames: false
   - id: remake-makefile
     name: Regenerate the Makefile from the Python implementation
-    entry: uv run python make.py makefile
+    entry: python make.py makefile
     language: system
     pass_filenames: false
   # keep-sorted end

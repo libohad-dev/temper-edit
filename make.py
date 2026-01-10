@@ -86,7 +86,7 @@ def makefile() -> None:
     TARGETS = {" ".join(sorted(targets))}
     .PHONY: $(TARGETS)
 
-    PYTHON = uv run python
+    PYTHON = python
 
     $(TARGETS):
     \t$(PYTHON) make.py $@

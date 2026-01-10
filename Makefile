@@ -4,7 +4,7 @@
 TARGETS = check-coverage list-pragmas makefile test test-html
 .PHONY: $(TARGETS)
 
-PYTHON = uv run python
+PYTHON = python
 
 $(TARGETS):
 	$(PYTHON) make.py $@
