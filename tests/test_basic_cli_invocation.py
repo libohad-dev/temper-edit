@@ -29,5 +29,5 @@ def test_script_fails_with_invalid_editor(container: DockerContainer) -> None:
 
 
 def test_script_fails_with_missing_file(container: DockerContainer) -> None:
-    with pytest.raises(RuntimeError, check=check_exception_content("cat: can't open '/foo/bar'")):
+    with pytest.raises(RuntimeError, check=check_exception_content("No such file or directory: '/foo/bar'")):
         _ = parse_output(container.exec(["sh", "-c", "EDITOR=/bin/cat temper-edit /foo/bar"]))

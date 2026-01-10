@@ -26,8 +26,8 @@ def main(filename: Path, editor_config: EditorConfig) -> subprocess.CompletedPro
 
     editor = select_editor(editor_config)
 
-    with SandboxedFile(filename=filename) as sandboxed_file:
-        res = subprocess.run(editor + [sandboxed_file], capture_output=True)
+    with SandboxedFile.spawn(filename=filename) as sandboxed_file:
+        res = subprocess.run(editor + [sandboxed_file.name], capture_output=True)
 
     if res.returncode != 0:
         raise RuntimeError(b"stderr: " + res.stderr + b" stdout: " + res.stdout, res.returncode)
