@@ -11,6 +11,7 @@ from testcontainers.core.image import DockerImage  # type: ignore[import-untyped
 
 
 @pytest.fixture(
+    scope="session",
     params=[
         # keep-sorted start
         "3.10.19-alpine3.23",
@@ -19,7 +20,7 @@ from testcontainers.core.image import DockerImage  # type: ignore[import-untyped
         "3.13.11-alpine3.23",
         "3.14.2-alpine3.23",
         # keep-sorted end
-    ]
+    ],
 )
 def image(request: pytest.FixtureRequest) -> Iterator[DockerImage]:
     image_tag: str = request.param
