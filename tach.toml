@@ -4,6 +4,19 @@
 
 exclude = ["**/__pycache__", "build/", "dist/", ".venv/", "tests/"]
 source_roots = ["src"]
+exact = true
+# keep-sorted start
+forbid_circular_dependencies = true
+ignore_type_checking_imports = false
+root_module = "forbid"
+# keep-sorted end
+
+[rules]
+# keep-sorted start
+require_ignore_directive_reasons = "error"
+unused_external_dependencies = "error"
+unused_ignore_directives = "error"
+# keep-sorted end
 
 [[modules]]
 path = "temper_edit.base_model"
