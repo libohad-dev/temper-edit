@@ -20,6 +20,10 @@ repos:
   rev: v5.0.2
   hooks:
   - id: reuse
+- repo: https://github.com/gauge-sh/tach-pre-commit
+  rev: v0.25.2
+  hooks:
+  - id: tach
 - repo: https://github.com/google/keep-sorted
   rev: v0.6.0
   hooks:

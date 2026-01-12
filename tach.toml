@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: 2025 Ohad Livne <libohad-dev@proton.me>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+exclude = ["**/__pycache__", "build/", "dist/", ".venv/", "tests/"]
+source_roots = ["src"]
+
+[[modules]]
+path = "temper_edit.base_model"
+depends_on = []
+
+[[modules]]
+path = "temper_edit.exceptions"
+depends_on = []
+
+[[modules]]
+path = "temper_edit.config"
+depends_on = [
+    # keep-sorted start
+    "temper_edit.base_model",
+    # keep-sorted end
+]
+
+[[modules]]
+path = "temper_edit.editor"
+depends_on = [
+    # keep-sorted start
+    "temper_edit.config",
+    "temper_edit.exceptions",
+    # keep-sorted end
+]
+
+[[modules]]
+path = "temper_edit.atomic_edit"
+depends_on = []
+
+[[modules]]
+path = "temper_edit.cli"
+depends_on = [
+    # keep-sorted start
+    "temper_edit.atomic_edit",
+    "temper_edit.config",
+    "temper_edit.editor",
+    # keep-sorted end
+]
