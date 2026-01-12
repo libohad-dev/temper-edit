@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import subprocess
+import sys
 from collections.abc import Container, Mapping
 from logging import getLogger
 from pathlib import Path
@@ -29,6 +30,7 @@ def main(filename: Path, editor_config: EditorConfig) -> subprocess.CompletedPro
     with SandboxedFile.spawn(filename=filename) as sandboxed_file:
         res = subprocess.run(editor + [sandboxed_file.name], capture_output=True)
         if res.returncode != 0:
+            print(f"Temporary file preserved at: {sandboxed_file.name}", file=sys.stderr)
             raise RuntimeError(b"stderr: " + res.stderr + b" stdout: " + res.stdout, res.returncode)
 
     return res
