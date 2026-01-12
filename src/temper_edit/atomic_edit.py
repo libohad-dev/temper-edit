@@ -31,8 +31,10 @@ class SandboxedFile(BaseModel):
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
     ) -> Literal[False]:
         self.tempfile.__exit__(exc_type, exc_value, traceback)
-        shutil.copymode(self.filename, self.tempfile.name)
-        shutil.move(self.tempfile.name, self.filename)
+
+        if exc_type is None:
+            shutil.copymode(self.filename, self.tempfile.name)
+            shutil.move(self.tempfile.name, self.filename)
 
         return False
 
