@@ -30,8 +30,17 @@ def execute(args: list[str], capture_output: bool = True) -> str:
         return ""
 
 
+@target("Build container images used by tests. Fails fast if any image build fails.")
+def build_test_images() -> None:
+    execute(
+        ["pytest", "-vv", "--numprocesses", "auto", "--setup-only", "tests/test_image_build.py::test_image_build"],
+        capture_output=False,
+    )
+
+
 @target("Verify that the code has full test coverage")
 def check_coverage() -> None:
+    build_test_images()
     execute(PYTEST_BASE_COMMAND + ["--cov-fail-under=100"], capture_output=False)
 
 
@@ -98,11 +107,13 @@ def makefile() -> None:
 
 @target("Run the full test suite and report the code coverage")
 def test() -> None:
+    build_test_images()
     execute(PYTEST_BASE_COMMAND, capture_output=False)
 
 
 @target("Run the full test suite and open the coverage report in a browser")
 def test_html() -> None:
+    build_test_images()
     execute(PYTEST_BASE_COMMAND + ["--cov-report=html"], capture_output=False)
     execute(["xdg-open", "htmlcov/index.html"])
 
