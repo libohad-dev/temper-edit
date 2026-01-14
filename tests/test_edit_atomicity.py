@@ -9,7 +9,7 @@ import uuid
 import pytest
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
 
-from tests.utils import exec_as_user, parse_output, stat_file
+from tests.utils import exec_as_user, get_mtime_ns, parse_output, stat_file
 
 
 def test_original_file_is_not_modified_midway(container: DockerContainer) -> None:
@@ -30,16 +30,22 @@ def test_original_file_is_not_modified_midway(container: DockerContainer) -> Non
     content = str(uuid.uuid4())
     container.exec(["touch", filename])
     container.exec(["chown", "user:user", filename])
+
+    mtime_before = get_mtime_ns(container=container, filename=filename)
+
     parse_output(
         exec_as_user(
             command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" temper-edit {filename}'], container=container
         )
     )
 
+    mtime_after = get_mtime_ns(container=container, filename=filename)
+
     uid, username, file_perms = stat_file(container=container, filename=filename)
     assert (uid, username) == (1000, "user"), "Wrong file ownership"
     assert file_perms.endswith("644"), "Wrong file permissions"
     assert parse_output(container.exec(["cat", filename])) == content, "Wrong file content"
+    assert mtime_after > mtime_before, "File mtime should have increased after successful edit"
 
     for fn in ["/tmp/pre-edit", "/tmp/post-edit"]:
         assert parse_output(container.exec(["cat", fn])) == "", f"Wrong file content in {fn}"
@@ -59,10 +65,16 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
     original_content = "foobar"
     content = str(uuid.uuid4())
     container.exec(["sh", "-c", f"echo '{original_content}' > {filename}"])
+
+    mtime_before = get_mtime_ns(container=container, filename=filename)
+
     with pytest.raises(RuntimeError):
         _ = parse_output(container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" temper-edit {filename}']))
+
+    mtime_after = get_mtime_ns(container=container, filename=filename)
 
     uid, username, file_perms = stat_file(container=container, filename=filename)
     assert (uid, username) == (0, "root"), "Wrong file ownership"
     assert file_perms.endswith("644"), "Wrong file permissions"
     assert parse_output(container.exec(["cat", filename])) == original_content, "Wrong file content"
+    assert mtime_after == mtime_before, "File mtime should not have changed after failed edit"

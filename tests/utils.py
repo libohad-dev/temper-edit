@@ -33,5 +33,10 @@ def stat_file(container: DockerContainer, filename: str) -> tuple[int, str, str]
     return int(uid), username, file_perms
 
 
+def get_mtime_ns(container: DockerContainer, filename: str) -> float:
+    """Get modification time with nanosecond resolution using GNU stat."""
+    return float(parse_output(container.exec(["stat", "-c", "%.9Y", filename])))
+
+
 def exec_as_user(command: list[str], container: DockerContainer, user: str = "user") -> ExecResult:
     return container.exec(["su", "-", user, "-c", shlex.join(command)])  # type: ignore[no-any-return]
