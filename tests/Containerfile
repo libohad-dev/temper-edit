@@ -2,15 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+# Locally-built base image with all external dependencies
 ARG IMAGE_TAG
-FROM docker.io/library/python:${IMAGE_TAG}
-
-RUN adduser -D -u 1000 user
+FROM localhost/temper-edit-test-base:${IMAGE_TAG}
 
 WORKDIR /app
 COPY pyproject.toml .
 COPY src/ .
-RUN pip install --no-cache-dir . && \
+RUN uv pip install --no-deps --system . && \
     rm -r /app
 WORKDIR /root
 

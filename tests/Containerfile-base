@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2025 Ohad Livne <libohad-dev@proton.me>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+ARG IMAGE_TAG
+FROM docker.io/astral/uv:${IMAGE_TAG}
+
+RUN adduser -D -u 1000 user
+
+WORKDIR /app
+COPY pyproject.toml .
+COPY uv.lock .
+RUN uv pip install --system . && \
+    rm -r /app
+WORKDIR /root
