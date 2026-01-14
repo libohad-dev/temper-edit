@@ -5,7 +5,8 @@
 ARG IMAGE_TAG
 FROM docker.io/astral/uv:${IMAGE_TAG}
 
-RUN adduser -D -u 1000 user
+RUN apk add coreutils && \
+    adduser -D -u 1000 user
 
 WORKDIR /app
 COPY pyproject.toml .

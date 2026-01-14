@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import re
 import textwrap
 
 import pytest
@@ -31,3 +32,10 @@ def test_basic_tempfile_permissions(container: DockerContainer) -> None:
     filestat = parse_output(container.exec(["python", "-c", script]))
 
     assert filestat.split() == ["0", "0x8180", "0", "0"]
+
+
+def test_timestamp_has_nanosecond_resolution(container: DockerContainer) -> None:
+    tempfile = parse_output(container.exec(["mktemp"]))
+    timestamp = parse_output(container.exec(["stat", "-c", "%.9Y", tempfile]))
+
+    assert re.match(r"^\d+\.\d{9}$", timestamp) is not None
