@@ -4,6 +4,7 @@
 
 import filecmp
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from types import TracebackType
@@ -14,12 +15,9 @@ try:
 except ImportError:
     SandboxedFileT = "SandboxedFile"  # type: ignore [assignment]
 
-from pydantic import BaseModel, ConfigDict
 
-
-class SandboxedFile(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
+@dataclass
+class SandboxedFile:
     filename: Path
     tempfile: _TemporaryFileWrapper  # type: ignore [type-arg]
 
