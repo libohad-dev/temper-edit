@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import filecmp
 import shutil
 from pathlib import Path
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
@@ -22,9 +23,14 @@ class SandboxedFile(BaseModel):
     filename: Path
     tempfile: _TemporaryFileWrapper  # type: ignore [type-arg]
 
+    @property
+    def _orig_path(self) -> str:
+        return self.tempfile.name + ".orig"
+
     def __enter__(self) -> _TemporaryFileWrapper:  # type: ignore [type-arg]
         self.tempfile.__enter__()
         shutil.copyfile(self.filename, self.tempfile.name)
+        shutil.copyfile(self.tempfile.name, self._orig_path)
         return self.tempfile
 
     def __exit__(
@@ -33,8 +39,13 @@ class SandboxedFile(BaseModel):
         self.tempfile.__exit__(exc_type, exc_value, traceback)
 
         if exc_type is None:
-            shutil.copymode(self.filename, self.tempfile.name)
-            shutil.move(self.tempfile.name, self.filename)
+            content_changed = not filecmp.cmp(self.tempfile.name, self._orig_path, shallow=False)
+            if content_changed:
+                shutil.copymode(self.filename, self.tempfile.name)
+                shutil.move(self.tempfile.name, self.filename)
+            else:
+                Path(self.tempfile.name).unlink()
+            Path(self._orig_path).unlink()
 
         return False
 

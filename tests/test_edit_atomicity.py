@@ -78,3 +78,29 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
     assert file_perms.endswith("644"), "Wrong file permissions"
     assert parse_output(container.exec(["cat", filename])) == original_content, "Wrong file content"
     assert mtime_after == mtime_before, "File mtime should not have changed after failed edit"
+
+
+def test_original_file_is_not_modified_when_content_unchanged(container: DockerContainer) -> None:
+    # Editor that does nothing (just exits successfully)
+    script = textwrap.dedent("""\
+    #! /bin/sh
+    exit 0
+    """)
+    container.exec(["sh", "-c", f"echo {shlex.quote(script)} > /tmp/noop-editor"])
+    container.exec(["chmod", "u+x", "/tmp/noop-editor"])
+
+    filename = "/tmp/file.txt"
+    original_content = "foobar"
+    container.exec(["sh", "-c", f"echo '{original_content}' > {filename}"])
+
+    mtime_before = get_mtime_ns(container=container, filename=filename)
+
+    parse_output(container.exec(command=["sh", "-c", f'EDITOR="/tmp/noop-editor" temper-edit {filename}']))
+
+    mtime_after = get_mtime_ns(container=container, filename=filename)
+
+    uid, username, file_perms = stat_file(container=container, filename=filename)
+    assert (uid, username) == (0, "root"), "Wrong file ownership"
+    assert file_perms.endswith("644"), "Wrong file permissions"
+    assert parse_output(container.exec(["cat", filename])) == original_content, "File content should be unchanged"
+    assert mtime_after == mtime_before, "File mtime should not have changed when content is unchanged"
