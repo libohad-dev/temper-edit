@@ -38,11 +38,6 @@ dev = [
   # keep-sorted end
 ]
 
-[tool.coverage.run]
-omit = [
-  "make.py",
-]
-
 [tool.mypy]
 mypy_path = "./src:./tests"
 
