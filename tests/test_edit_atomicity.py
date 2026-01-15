@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import re
 import shlex
 import textwrap
 import uuid
@@ -77,7 +78,7 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
 
     mtime_before = get_mtime_ns(container=container, filename=filename)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(RuntimeError) as exc_info:
         _ = parse_output(
             container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_BINARY} {filename}'])
         )
@@ -89,6 +90,15 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
     assert file_perms.endswith("644"), "Wrong file permissions"
     assert parse_output(container.exec(["cat", filename])) == original_content, "Wrong file content"
     assert mtime_after == mtime_before, "File mtime should not have changed after failed edit"
+
+    # Validate error message format and extract preserved temp file path
+    error_output = exc_info.value.args[0].decode("utf-8")
+    match = re.search(r"Temporary file preserved at: (?P<tempfile>/tmp/\S+)", error_output)
+    assert match is not None, f"Error message should contain preserved temp file path, got: {error_output}"
+    # Verify temporary file was preserved and contains the expected content
+    tempfile = match["tempfile"]
+    assert list_tmp_files(container) == {"file.txt", "edit-file", tempfile.removeprefix("/tmp/")}
+    assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
 
 
 def test_original_file_is_not_modified_when_content_unchanged(container: DockerContainer) -> None:
