@@ -36,14 +36,16 @@ class SandboxedFile:
     ) -> Literal[False]:
         self.tempfile.__exit__(exc_type, exc_value, traceback)
 
-        if exc_type is None:
-            content_changed = not filecmp.cmp(self.tempfile.name, self._orig_path, shallow=False)
-            if content_changed:
-                shutil.copymode(self.filename, self.tempfile.name)
-                shutil.move(self.tempfile.name, self.filename)
-            else:
-                Path(self.tempfile.name).unlink()
-            Path(self._orig_path).unlink()
+        try:
+            if exc_type is None:
+                content_changed = not filecmp.cmp(self.tempfile.name, self._orig_path, shallow=False)
+                if content_changed:
+                    shutil.copymode(self.filename, self.tempfile.name)
+                    shutil.move(self.tempfile.name, self.filename)
+                else:
+                    Path(self.tempfile.name).unlink()
+        finally:
+            Path(self._orig_path).unlink(missing_ok=True)
 
         return False
 
