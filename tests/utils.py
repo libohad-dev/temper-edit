@@ -28,7 +28,7 @@ def check_exception_content(subst: str) -> Callable[[RuntimeError], bool]:
 
 
 def stat_file(container: DockerContainer, filename: str) -> tuple[int, str, str]:
-    stat_result = parse_output(container.exec(["stat", "-c", "%u %U %f", filename]))
+    stat_result = parse_output(container.exec(["stat", "--format", "%u %U %f", filename]))
     uid, username, file_perms_hex = stat_result.split()
     file_perms = oct(int(file_perms_hex, 16))
 
@@ -37,7 +37,7 @@ def stat_file(container: DockerContainer, filename: str) -> tuple[int, str, str]
 
 def get_mtime_ns(container: DockerContainer, filename: str) -> float:
     """Get modification time with nanosecond resolution using GNU stat."""
-    return float(parse_output(container.exec(["stat", "-c", "%.9Y", filename])))
+    return float(parse_output(container.exec(["stat", "--format", "%.9Y", filename])))
 
 
 def exec_as_user(command: list[str], container: DockerContainer, user: str = "user") -> ExecResult:

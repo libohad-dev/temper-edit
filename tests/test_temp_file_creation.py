@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Ohad Livne <libohad-dev@proton.me>
+# SPDX-FileCopyrightText: 2025-2026 Ohad Livne <libohad-dev@proton.me>
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -36,6 +36,6 @@ def test_basic_tempfile_permissions(container: DockerContainer) -> None:
 
 def test_timestamp_has_nanosecond_resolution(container: DockerContainer) -> None:
     tempfile = parse_output(container.exec(["mktemp"]))
-    timestamp = parse_output(container.exec(["stat", "-c", "%.9Y", tempfile]))
+    timestamp = parse_output(container.exec(["stat", "--format", "%.9Y", tempfile]))
 
     assert re.match(r"^\d+\.\d{9}$", timestamp) is not None
