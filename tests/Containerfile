@@ -10,7 +10,8 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY src/ .
 RUN uv venv --system-site-packages && \
-    uv pip install --no-deps .
+    uv pip install --no-deps --editable . && \
+    chmod -R a+rX temper_edit
 WORKDIR /root
 
 ENTRYPOINT ["/bin/sleep"]
