@@ -12,6 +12,11 @@ from testcontainers.core.container import DockerContainer  # type: ignore[import
 from tests.utils import TEMPER_EDIT_BINARY, exec_as_user, get_mtime_ns, parse_output, stat_file
 
 
+def list_tmp_files(container: DockerContainer) -> set[str]:
+    """List all files in /tmp directory."""
+    return set(parse_output(container.exec(["ls", "-1", "/tmp"])).splitlines())
+
+
 def test_original_file_is_not_modified_midway(container: DockerContainer) -> None:
     filename = "/tmp/file.txt"
 
@@ -50,6 +55,9 @@ def test_original_file_is_not_modified_midway(container: DockerContainer) -> Non
 
     for fn in ["/tmp/pre-edit", "/tmp/post-edit"]:
         assert parse_output(container.exec(["cat", fn])) == "", f"Wrong file content in {fn}"
+
+    # Verify temporary files were cleaned up
+    assert list_tmp_files(container) == {"file.txt", "edit-file", "pre-edit", "post-edit"}
 
 
 def test_original_file_is_not_modified_when_the_editor_fails(container: DockerContainer) -> None:
@@ -107,3 +115,6 @@ def test_original_file_is_not_modified_when_content_unchanged(container: DockerC
     assert file_perms.endswith("644"), "Wrong file permissions"
     assert parse_output(container.exec(["cat", filename])) == original_content, "File content should be unchanged"
     assert mtime_after == mtime_before, "File mtime should not have changed when content is unchanged"
+
+    # Verify temporary files were cleaned up
+    assert list_tmp_files(container) == {"file.txt", "noop-editor"}
