@@ -9,6 +9,8 @@ from typing import cast
 from docker.models.containers import ExecResult
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
 
+TEMPER_EDIT_BINARY = "/app/.venv/bin/temper-edit"
+
 
 def parse_output(res: ExecResult) -> str:
     if res.exit_code != 0:

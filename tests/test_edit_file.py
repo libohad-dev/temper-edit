@@ -10,7 +10,7 @@ import pytest
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
 
 from tests.masks import supermasks
-from tests.utils import exec_as_user, parse_output, stat_file
+from tests.utils import TEMPER_EDIT_BINARY, exec_as_user, parse_output, stat_file
 
 
 def test_root_user_update_file_and_preserve_permissions(container: DockerContainer) -> None:
@@ -27,7 +27,7 @@ def test_root_user_update_file_and_preserve_permissions(container: DockerContain
         content = str(uuid.uuid4())
         container.exec(["touch", filename])
         container.exec(["chmod", octal, filename])
-        container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" temper-edit {filename}'])
+        container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_BINARY} {filename}'])
 
         uid, username, file_perms = stat_file(container=container, filename=filename)
         assert (uid, username) == (0, "root"), f"Wrong file ownership for mode {octal}"
@@ -52,7 +52,8 @@ def test_non_root_user_update_file_and_preserve_permissions(container: DockerCon
         container.exec(["chmod", octal, filename])
         container.exec(["chown", "user:user", filename])
         exec_as_user(
-            command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" temper-edit {filename}'], container=container
+            command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_BINARY} {filename}'],
+            container=container,
         )
 
         uid, username, file_perms = stat_file(container=container, filename=filename)
@@ -76,7 +77,8 @@ def test_non_root_user_cannot_update_root_owned_file(container: DockerContainer)
     with pytest.raises(RuntimeError, match="Permission denied"):
         _ = parse_output(
             exec_as_user(
-                command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" temper-edit {filename}'], container=container
+                command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_BINARY} {filename}'],
+                container=container,
             )
         )
 

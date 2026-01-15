@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Ohad Livne <libohad-dev@proton.me>
+# SPDX-FileCopyrightText: 2025-2026 Ohad Livne <libohad-dev@proton.me>
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -9,8 +9,8 @@ FROM localhost/temper-edit-test-base:${IMAGE_TAG}
 WORKDIR /app
 COPY pyproject.toml .
 COPY src/ .
-RUN uv pip install --no-deps --system . && \
-    rm -r /app
+RUN uv venv --system-site-packages && \
+    uv pip install --no-deps .
 WORKDIR /root
 
 ENTRYPOINT ["/bin/sleep"]
