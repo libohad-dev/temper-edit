@@ -11,7 +11,8 @@ COPY pyproject.toml .
 COPY src/ .
 RUN uv venv --system-site-packages && \
     uv pip install --no-deps --editable . && \
-    chmod -R a+rX temper_edit
+    chmod -R a+rX temper_edit && \
+    rm /tmp/uv-*.lock
 WORKDIR /root
 
 ENTRYPOINT ["/bin/sleep"]
