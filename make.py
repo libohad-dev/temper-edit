@@ -1,9 +1,13 @@
-# SPDX-FileCopyrightText: 2025 Ohad Livne <libohad-dev@proton.me>
+# SPDX-FileCopyrightText: 2025-2026 Ohad Livne <libohad-dev@proton.me>
 #
 # SPDX-License-Identifier: CC0-1.0
 
+import shutil
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 type Target = Callable[[], None]
 targets: dict[str, tuple[str, Target]] = {}
@@ -28,6 +32,25 @@ def execute(args: list[str], capture_output: bool = True) -> str:
         return output.stdout.strip()
     else:
         return ""
+
+
+def combine_container_coverage(container_cov_dir: Path) -> None:
+    coverage_files = list(container_cov_dir.glob(".coverage.*"))
+    if coverage_files:
+        for cov_file in coverage_files:
+            shutil.move(cov_file, Path.cwd())
+        execute(["coverage", "combine", "--append"])
+
+
+@contextmanager
+def coverage_directory() -> Iterator[Path]:
+    with TemporaryDirectory(prefix="temper-edit-coverage-") as tmpdir:
+        try:
+            tmp_path = Path(tmpdir)
+            tmp_path.chmod(0o777)
+            yield tmp_path
+        finally:
+            combine_container_coverage(Path(tmpdir))
 
 
 @target("Build container images used by tests. Fails fast if any image build fails.")
