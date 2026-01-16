@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Ohad Livne <libohad-dev@proton.me>
+# SPDX-FileCopyrightText: 2025-2026 Ohad Livne <libohad-dev@proton.me>
 #
 # SPDX-License-Identifier: CC0-1.0
 
@@ -29,6 +29,7 @@ temper-edit = "temper_edit.cli:run"
 dev = [
   # keep-sorted start
   "case-converter >=1.2.0, <2",
+  "coverage >=7.13.1, <8",
   "debugpy >=1.8.14, <2",
   "pytest >=8.4.0, <9",
   "pytest-cov >=6.2.1, <7",
@@ -37,6 +38,23 @@ dev = [
   "testcontainers >=4.13, <5",
   # keep-sorted end
 ]
+
+[tool.coverage.run]
+parallel = true
+relative_files = true
+source = ["src/temper_edit", "tests"]
+
+[tool.coverage.paths]
+source = [
+  "src/temper_edit",
+  "/app/temper_edit",
+]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"
 
 [tool.mypy]
 mypy_path = "./src:./tests"
