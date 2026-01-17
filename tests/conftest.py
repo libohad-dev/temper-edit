@@ -20,6 +20,20 @@ tags = [
 ]
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption("--container-coverage-dir", help="Directory to store coverage data from containers")
+
+
+@pytest.fixture(scope="session")
+def container_coverage_dir(request: pytest.FixtureRequest) -> Path | None:
+    cov_dir = request.config.getoption("--container-coverage-dir")
+    if cov_dir:
+        path = Path(cov_dir)
+        path.mkdir(parents=True, exist_ok=True)
+        return Path(cov_dir)
+    return None
+
+
 @pytest.fixture(scope="session", params=tags)
 def base_image(request: pytest.FixtureRequest) -> Iterator[DockerImage]:
     image_tag: str = request.param
@@ -51,14 +65,16 @@ def image(base_image: DockerImage) -> Iterator[DockerImage]:
 
 
 @pytest.fixture
-def container(image: DockerImage) -> Iterator[DockerContainer]:
+def container(image: DockerImage, container_coverage_dir: Path) -> Iterator[DockerContainer]:
     with DockerContainer(
         str(image),
         # keep-sorted start
         auto_remove=True,
+        env={"COVERAGE_FILE": "/coverage/.coverage"},
         network_mode="none",
         read_only=True,
         remove=True,
+        volumes=[(str(container_coverage_dir), "/coverage", "rw")],
         # keep-sorted end
     ) as test_container:
         yield test_container

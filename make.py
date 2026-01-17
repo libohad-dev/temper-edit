@@ -53,6 +53,10 @@ def coverage_directory() -> Iterator[Path]:
             combine_container_coverage(Path(tmpdir))
 
 
+def pytest_command(container_cov_dir: Path) -> list[str]:
+    return PYTEST_BASE_COMMAND + ["--container-coverage-dir", str(container_cov_dir), "tests"]
+
+
 @target("Build container images used by tests. Fails fast if any image build fails.")
 def build_test_images() -> None:
     execute(
@@ -64,7 +68,9 @@ def build_test_images() -> None:
 @target("Verify that the code has full test coverage")
 def check_coverage() -> None:
     build_test_images()
-    execute(PYTEST_BASE_COMMAND + ["--cov-fail-under=100"], capture_output=False)
+    with coverage_directory() as container_cov_dir:
+        execute(pytest_command(container_cov_dir) + ["--cov-fail-under=100"], capture_output=False)
+    execute(["coverage", "report", "--fail-under=100"], capture_output=False)
 
 
 @target("Find all the uses of linting-avoiding pragmas in the code")
@@ -131,13 +137,17 @@ def makefile() -> None:
 @target("Run the full test suite and report the code coverage")
 def test() -> None:
     build_test_images()
-    execute(PYTEST_BASE_COMMAND, capture_output=False)
+    with coverage_directory() as container_cov_dir:
+        execute(pytest_command(container_cov_dir), capture_output=False)
+    execute(["coverage", "report"], capture_output=False)
 
 
 @target("Run the full test suite and open the coverage report in a browser")
 def test_html() -> None:
     build_test_images()
-    execute(PYTEST_BASE_COMMAND + ["--cov-report=html"], capture_output=False)
+    with coverage_directory() as container_cov_dir:
+        execute(pytest_command(container_cov_dir), capture_output=False)
+    execute(["coverage", "html"], capture_output=False)
     execute(["xdg-open", "htmlcov/index.html"])
 
 
