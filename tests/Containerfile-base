@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Ohad Livne <libohad-dev@proton.me>
+# SPDX-FileCopyrightText: 2025-2026 Ohad Livne <libohad-dev@proton.me>
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -11,6 +11,6 @@ RUN apk add coreutils && \
 WORKDIR /app
 COPY pyproject.toml .
 COPY uv.lock .
-RUN uv pip install --system . && \
+RUN uv pip install --group dev --system . && \
     rm -r /app
 WORKDIR /root
