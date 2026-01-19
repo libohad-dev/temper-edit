@@ -10,6 +10,19 @@ from docker.models.containers import ExecResult
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
 
 TEMPER_EDIT_BINARY = "/app/.venv/bin/temper-edit"
+TEMPER_EDIT_COMMAND = [
+    "/app/.venv/bin/python",
+    "-m",
+    "coverage",
+    "run",
+    "--parallel-mode",
+    "--rcfile",
+    "/app/pyproject.toml",
+    "--source",
+    "/app/temper_edit",
+    TEMPER_EDIT_BINARY,
+]
+TEMPER_EDIT_SHELL_COMMAND = shlex.join(TEMPER_EDIT_COMMAND)
 
 
 def parse_output(res: ExecResult) -> str:
@@ -41,4 +54,4 @@ def get_mtime_ns(container: DockerContainer, filename: str) -> float:
 
 
 def exec_as_user(command: list[str], container: DockerContainer, user: str = "user") -> ExecResult:
-    return container.exec(["su", "-", user, "-c", shlex.join(command)])  # type: ignore[no-any-return]
+    return container.exec(["su", "-", user, "-c", f'COVERAGE_FILE="/coverage/.coverage" {shlex.join(command)}'])  # type: ignore[no-any-return]

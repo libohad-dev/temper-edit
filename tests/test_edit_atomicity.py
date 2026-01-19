@@ -10,7 +10,7 @@ import uuid
 import pytest
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
 
-from tests.utils import TEMPER_EDIT_BINARY, exec_as_user, get_mtime_ns, parse_output, stat_file
+from tests.utils import TEMPER_EDIT_SHELL_COMMAND, exec_as_user, get_mtime_ns, parse_output, stat_file
 
 
 def list_tmp_files(container: DockerContainer) -> set[str]:
@@ -41,7 +41,7 @@ def test_original_file_is_not_modified_midway(container: DockerContainer) -> Non
 
     parse_output(
         exec_as_user(
-            command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_BINARY} {filename}'],
+            command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'],
             container=container,
         )
     )
@@ -80,7 +80,7 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
 
     with pytest.raises(RuntimeError) as exc_info:
         _ = parse_output(
-            container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_BINARY} {filename}'])
+            container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'])
         )
 
     mtime_after = get_mtime_ns(container=container, filename=filename)
@@ -116,7 +116,9 @@ def test_original_file_is_not_modified_when_content_unchanged(container: DockerC
 
     mtime_before = get_mtime_ns(container=container, filename=filename)
 
-    parse_output(container.exec(command=["sh", "-c", f'EDITOR="/tmp/noop-editor" {TEMPER_EDIT_BINARY} {filename}']))
+    parse_output(
+        container.exec(command=["sh", "-c", f'EDITOR="/tmp/noop-editor" {TEMPER_EDIT_SHELL_COMMAND} {filename}'])
+    )
 
     mtime_after = get_mtime_ns(container=container, filename=filename)
 
