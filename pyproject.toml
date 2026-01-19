@@ -14,7 +14,7 @@ license-files = ["LICENSES"]
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
-    "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3",
 ]
 dependencies = [
   # keep-sorted start
@@ -59,23 +59,23 @@ line-length = 120
 
 [tool.ruff.lint]
 select = [
-    # keep-sorted start
-    "B",  # flake8-bugbear
-    "I",  # isort
-    "PTH",  # flake8-use-pathlib
-    "RET",  # flake8-return
-    "SIM",  # flake8-simplify
-    "UP",  # pyupgrade
-    # keep-sorted end
-    # keep-sorted start
-    "F401",  # remove unused imports
-    # keep-sorted end
+  # keep-sorted start
+  "B",  # flake8-bugbear
+  "I",  # isort
+  "PTH",  # flake8-use-pathlib
+  "RET",  # flake8-return
+  "SIM",  # flake8-simplify
+  "UP",  # pyupgrade
+  # keep-sorted end
+  # keep-sorted start
+  "F401",  # remove unused imports
+  # keep-sorted end
 ]
 ignore = [
-    # keep-sorted start
-    "RET505",  # Unnecessary branch after return
-    "RET506",  # Unnecessary branch after raise
-    "RET507",  # Unnecessary branch after continue
-    "RET508",  # Unnecessary branch after break
-    # keep-sorted end
+  # keep-sorted start
+  "RET505",  # Unnecessary branch after return
+  "RET506",  # Unnecessary branch after raise
+  "RET507",  # Unnecessary branch after continue
+  "RET508",  # Unnecessary branch after break
+  # keep-sorted end
 ]
