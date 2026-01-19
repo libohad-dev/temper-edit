@@ -4,6 +4,7 @@
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
@@ -65,7 +66,13 @@ def image(base_image: DockerImage) -> Iterator[DockerImage]:
 
 
 @pytest.fixture
-def container(image: DockerImage, container_coverage_dir: Path) -> Iterator[DockerContainer]:
+def container(image: DockerImage, container_coverage_dir: Path | None) -> Iterator[DockerContainer]:
+    cov_dir_mount: dict[str, Any] = (
+        {"tmpfs": {"/coverage": "size=1M,mode=1777"}}
+        if container_coverage_dir is None
+        else {"volumes": [(str(container_coverage_dir), "/coverage", "rw")]}
+    )
+
     with DockerContainer(
         str(image),
         # keep-sorted start
@@ -74,7 +81,7 @@ def container(image: DockerImage, container_coverage_dir: Path) -> Iterator[Dock
         network_mode="none",
         read_only=True,
         remove=True,
-        volumes=[(str(container_coverage_dir), "/coverage", "rw")],
         # keep-sorted end
+        **cov_dir_mount,
     ) as test_container:
         yield test_container
