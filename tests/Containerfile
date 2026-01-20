@@ -7,7 +7,7 @@ ARG IMAGE_TAG
 FROM localhost/temper-edit-test-base:${IMAGE_TAG}
 
 WORKDIR /app
-COPY pyproject.toml .
+COPY --chmod=444 pyproject.toml .
 COPY src/ .
 RUN uv venv --system-site-packages && \
     uv pip install --no-deps --editable . && \
