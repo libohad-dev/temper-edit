@@ -43,6 +43,7 @@ dev = [
 omit = [
   "tests/conftest.py",
 ]
+branch = true
 parallel = true
 relative_files = true
 source = ["src/temper_edit", "tests"]
