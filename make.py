@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 type Target = Callable[[], None]
 targets: dict[str, tuple[str, Target]] = {}
 
-PYTEST_BASE_COMMAND = ["pytest", "-vv", "--numprocesses", "auto", "--cov", "src", "--cov", "tests"]
+PYTEST_BASE_COMMAND = ["pytest", "-vv", "--numprocesses", "auto"]
 
 
 def target(description: str) -> Callable[[Target], Target]:
@@ -59,17 +59,14 @@ def pytest_command(container_cov_dir: Path) -> list[str]:
 
 @target("Build container images used by tests. Fails fast if any image build fails.")
 def build_test_images() -> None:
-    execute(
-        ["pytest", "-vv", "--numprocesses", "auto", "--setup-only", "tests/test_image_build.py::test_image_build"],
-        capture_output=False,
-    )
+    execute(PYTEST_BASE_COMMAND + ["--setup-only", "tests/test_image_build.py::test_image_build"], capture_output=False)
 
 
 @target("Verify that the code has full test coverage")
 def check_coverage() -> None:
     build_test_images()
     with coverage_directory() as container_cov_dir:
-        execute(pytest_command(container_cov_dir) + ["--cov-fail-under=100"], capture_output=False)
+        execute(pytest_command(container_cov_dir), capture_output=False)
     execute(["coverage", "report", "--fail-under=100"], capture_output=False)
 
 

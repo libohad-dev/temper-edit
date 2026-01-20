@@ -32,7 +32,6 @@ dev = [
   "coverage >=7.13.1, <8",
   "debugpy >=1.8.14, <2",
   "pytest >=8.4.0, <9",
-  "pytest-cov >=6.2.1, <7",
   "pytest-xdist >=3.8.0, <4.0.0",
   "tach >=0.25, <1",
   "testcontainers >=4.13, <5",
