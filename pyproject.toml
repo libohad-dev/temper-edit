@@ -40,6 +40,9 @@ dev = [
 ]
 
 [tool.coverage.run]
+omit = [
+  "tests/conftest.py",
+]
 parallel = true
 relative_files = true
 source = ["src/temper_edit", "tests"]
