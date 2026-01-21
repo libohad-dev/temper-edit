@@ -43,7 +43,7 @@ def base_image(request: pytest.FixtureRequest) -> Iterator[DockerImage]:
         # keep-sorted start
         buildargs={"IMAGE_TAG": image_tag},
         clean_up=False,
-        dockerfile_path="tests/Containerfile-base",
+        dockerfile_path="tests/Containerfile.base",
         tag=f"localhost/temper-edit-test-base:{image_tag}",
         # keep-sorted end
     ) as base_test_image:
