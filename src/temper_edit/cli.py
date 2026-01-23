@@ -4,21 +4,13 @@
 
 import subprocess
 import sys
-from collections.abc import Container, Mapping
 from logging import getLogger
 from pathlib import Path
-from typing import TypeVar
 
 from .config import EditorConfig
+from .utils import keep_keys
 
 logger = getLogger(__name__)
-
-K = TypeVar("K")
-V = TypeVar("V")
-
-
-def keep_keys(d: Mapping[K, V], keys: Container[K]) -> dict[K, V]:
-    return {k: v for k, v in d.items() if k in keys}
 
 
 def main(filename: Path, editor_config: EditorConfig) -> subprocess.CompletedProcess[bytes]:

@@ -27,6 +27,10 @@ path = "temper_edit.exceptions"
 depends_on = []
 
 [[modules]]
+path = "temper_edit.utils"
+depends_on = []
+
+[[modules]]
 path = "temper_edit.config"
 depends_on = [
     # keep-sorted start
@@ -54,5 +58,6 @@ depends_on = [
     "temper_edit.atomic_edit",
     "temper_edit.config",
     "temper_edit.editor",
+    "temper_edit.utils",
     # keep-sorted end
 ]
