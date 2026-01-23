@@ -43,6 +43,6 @@ def run() -> None:
     logger.debug("Looking for relevant environment variables", extra=dict(envvars=sorted(ENVVARS)))
     env_config = keep_keys(os.environ, ENVVARS)
     logger.debug("Loaded environment variables", extra=dict(env_config=json.dumps(env_config)))
-    editor_config = EditorConfig.model_validate(env_config)
+    editor_config = EditorConfig.from_env(env_config)
 
     main(filename=args.filename, editor_config=editor_config)

@@ -36,7 +36,6 @@ repos:
   - id: mypy
     additional_dependencies:
     # keep-sorted start
-    - pydantic>=2.10.6,<3
     - pytest>=8.4.0,<9
     - testcontainers>=4.13,<5
     - types-docker>=7.1.0,<7.2

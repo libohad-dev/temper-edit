@@ -19,10 +19,6 @@ unused_ignore_directives = "error"
 # keep-sorted end
 
 [[modules]]
-path = "temper_edit.base_model"
-depends_on = []
-
-[[modules]]
 path = "temper_edit.exceptions"
 depends_on = []
 
@@ -34,7 +30,7 @@ depends_on = []
 path = "temper_edit.config"
 depends_on = [
     # keep-sorted start
-    "temper_edit.base_model",
+    "temper_edit.utils",
     # keep-sorted end
 ]
 
