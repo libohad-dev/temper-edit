@@ -24,6 +24,8 @@ repos:
   rev: v0.25.2
   hooks:
   - id: tach
+  - id: tach-external
+    args: [--exclude, tests/]
 - repo: https://github.com/google/keep-sorted
   rev: v0.6.0
   hooks:
