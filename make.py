@@ -34,6 +34,12 @@ def execute(args: list[str], capture_output: bool = True) -> str:
         return ""
 
 
+def clean_coverage_files() -> None:
+    for cov_file in Path.cwd().glob(".coverage*"):
+        cov_file.unlink()
+    shutil.rmtree(Path.cwd() / "htmlcov", ignore_errors=True)
+
+
 def combine_container_coverage(container_cov_dir: Path) -> None:
     coverage_files = list(container_cov_dir.glob(".coverage.*"))
     if coverage_files:
@@ -65,6 +71,7 @@ def build_test_images() -> None:
 @target("Verify that the code has full test coverage")
 def check_coverage() -> None:
     build_test_images()
+    clean_coverage_files()
     with coverage_directory() as container_cov_dir:
         execute(pytest_command(container_cov_dir), capture_output=False)
     execute(["coverage", "report", "--fail-under=100"], capture_output=False)
@@ -134,6 +141,7 @@ def makefile() -> None:
 @target("Run the full test suite and report the code coverage")
 def test() -> None:
     build_test_images()
+    clean_coverage_files()
     with coverage_directory() as container_cov_dir:
         execute(pytest_command(container_cov_dir), capture_output=False)
     execute(["coverage", "report"], capture_output=False)
@@ -142,6 +150,7 @@ def test() -> None:
 @target("Run the full test suite and open the coverage report in a browser")
 def test_html() -> None:
     build_test_images()
+    clean_coverage_files()
     with coverage_directory() as container_cov_dir:
         execute(pytest_command(container_cov_dir), capture_output=False)
     execute(["coverage", "html"], capture_output=False)
