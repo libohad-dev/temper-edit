@@ -50,11 +50,9 @@ def clean_coverage_files() -> None:
 
 
 def combine_container_coverage(container_cov_dir: Path) -> None:
-    coverage_files = list(container_cov_dir.glob(".coverage.*"))
-    if coverage_files:
-        for cov_file in coverage_files:
-            shutil.move(cov_file, Path.cwd())
-        execute(["coverage", "combine", "--append"])
+    for cov_file in container_cov_dir.glob(".coverage.*"):
+        shutil.move(cov_file, Path.cwd())
+    execute(["coverage", "combine", "--append"])
 
 
 @contextmanager
