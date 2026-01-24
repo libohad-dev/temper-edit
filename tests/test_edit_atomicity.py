@@ -22,6 +22,15 @@ def list_container_files(container: DockerContainer, directory: str) -> set[str]
     }
 
 
+def extract_preserved_temporary_filename(exc_info: pytest.ExceptionInfo[RuntimeError]) -> str:
+    # Validate error message format and extract preserved temp file path
+    error_output = exc_info.value.args[0].decode("utf-8")
+    match = re.search(r"Temporary file preserved at: (?P<tempfile>/tmp/\S+)", error_output)
+    assert match is not None, f"Error message should contain preserved temp file path, got: {error_output}"
+
+    return match["tempfile"]
+
+
 def test_original_file_is_not_modified_midway(container: DockerContainer) -> None:
     filename = "/tmp/file.txt"
 
@@ -100,12 +109,8 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
     assert parse_output(container.exec(["cat", filename])) == original_content, "Wrong file content"
     assert mtime_after == mtime_before, "File mtime should not have changed after failed edit"
 
-    # Validate error message format and extract preserved temp file path
-    error_output = exc_info.value.args[0].decode("utf-8")
-    match = re.search(r"Temporary file preserved at: (?P<tempfile>/tmp/\S+)", error_output)
-    assert match is not None, f"Error message should contain preserved temp file path, got: {error_output}"
     # Verify temporary file was preserved and contains the expected content
-    tempfile = match["tempfile"]
+    tempfile = extract_preserved_temporary_filename(exc_info)
     assert list_container_files(container=container, directory="/tmp") == {"/tmp/file.txt", "/tmp/edit-file", tempfile}
     assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
 
