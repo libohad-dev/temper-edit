@@ -74,7 +74,7 @@ def check_coverage() -> None:
     clean_coverage_files()
     with coverage_directory() as container_cov_dir:
         execute(pytest_command(container_cov_dir), capture_output=False)
-    execute(["coverage", "report", "--fail-under=100"], capture_output=False)
+    execute(["coverage", "report", "--fail-under", "100"], capture_output=False)
 
 
 @target("Find all the uses of linting-avoiding pragmas in the code")
