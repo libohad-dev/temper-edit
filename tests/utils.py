@@ -46,18 +46,24 @@ class FileStat:
     mode: str
     uid: int
     username: str
+    gid: int
+    groupname: str
 
     @property
     def user(self) -> tuple[int, str]:
         return (self.uid, self.username)
 
+    @property
+    def group(self) -> tuple[int, str]:
+        return (self.gid, self.groupname)
+
 
 def stat_file(container: DockerContainer, filename: str) -> FileStat:
-    stat_result = parse_output(container.exec(["stat", "--format", "%u %U %f", filename]))
-    uid, username, file_perms_hex = stat_result.split()
+    stat_result = parse_output(container.exec(["stat", "--format", "%u %U %g %G %f", filename]))
+    uid, username, gid, groupname, file_perms_hex = stat_result.split()
     mode = oct(int(file_perms_hex, 16))
 
-    return FileStat(mode=mode, uid=int(uid), username=username)
+    return FileStat(mode=mode, uid=int(uid), username=username, gid=int(gid), groupname=groupname)
 
 
 def get_mtime_ns(container: DockerContainer, filename: str) -> float:

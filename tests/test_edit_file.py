@@ -30,7 +30,8 @@ def test_root_user_update_file_and_preserve_permissions(container: DockerContain
         container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'])
 
         stat = stat_file(container=container, filename=filename)
-        assert stat.user == (0, "root"), f"Wrong file ownership for mode {octal}"
+        assert stat.user == (0, "root"), f"Wrong file user ownership for mode {octal}"
+        assert stat.group == (0, "root"), f"Wrong file group ownership for mode {octal}"
         assert stat.mode.endswith(octal), f"Mismatched permissions for mode {octal}"
         assert parse_output(container.exec(["cat", filename])) == content, f"Wrong file content for mode {octal}"
 
@@ -53,7 +54,8 @@ def test_root_user_update_user_owned_file_and_preserve_permissions(container: Do
         container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'])
 
         stat = stat_file(container=container, filename=filename)
-        assert stat.user == (1000, "user"), f"Wrong file ownership for mode {octal}"
+        assert stat.user == (1000, "user"), f"Wrong file user ownership for mode {octal}"
+        assert stat.group == (1000, "user"), f"Wrong file group ownership for mode {octal}"
         assert stat.mode.endswith(octal), f"Mismatched permissions for mode {octal}"
         assert parse_output(container.exec(["cat", filename])) == content, f"Wrong file content for mode {octal}"
 
@@ -80,7 +82,8 @@ def test_non_root_user_update_file_and_preserve_permissions(container: DockerCon
         )
 
         stat = stat_file(container=container, filename=filename)
-        assert stat.user == (1000, "user"), f"Wrong file ownership for mode {octal}"
+        assert stat.user == (1000, "user"), f"Wrong file user ownership for mode {octal}"
+        assert stat.group == (1000, "user"), f"Wrong file group ownership for mode {octal}"
         assert stat.mode.endswith(octal), f"Mismatched permissions for mode {octal}"
         assert parse_output(container.exec(["cat", filename])) == content, f"Wrong file content for mode {octal}"
 
@@ -106,6 +109,7 @@ def test_non_root_user_cannot_update_root_owned_file(container: DockerContainer)
         )
 
     stat = stat_file(container=container, filename=filename)
-    assert stat.user == (0, "root"), "Wrong file ownership"
+    assert stat.user == (0, "root"), "Wrong file user ownership"
+    assert stat.group == (0, "root"), "Wrong file group ownership"
     assert stat.mode.endswith("644"), "Wrong file permissions"
     assert parse_output(container.exec(["cat", filename])) == "", "Wrong file content"
