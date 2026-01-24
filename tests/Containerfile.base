@@ -5,8 +5,9 @@
 ARG IMAGE_TAG
 FROM docker.io/astral/uv:${IMAGE_TAG}
 
-RUN apk add coreutils sudo && \
+RUN apk add coreutils doas sudo && \
     echo '%wheel ALL=(ALL:ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel && \
+    echo 'permit nopass :wheel' >> /etc/doas.d/doas.conf && \
     adduser -D -u 1000 user && \
     adduser user wheel && \
     uv pip install --system coverage[toml]

@@ -43,7 +43,10 @@ def run() -> None:
 
     from .config import ENVVARS
 
-    if "SUDO_USER" in os.environ:
+    # Detect usage of privilege escalation tools: sudo, doas, pkexec
+    # Note: pkexec rejection is not tested in the alpine-based images
+    privilege_escalation_envvars = {"SUDO_USER", "DOAS_USER", "PKEXEC_UID"}
+    if privilege_escalation_envvars & os.environ.keys():
         print("Refusing to run with escalated privileges", file=sys.stderr)
         sys.exit(1)
 

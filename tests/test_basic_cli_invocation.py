@@ -39,16 +39,16 @@ def test_script_fails_with_missing_file(container: DockerContainer) -> None:
         _ = parse_output(container.exec(["sh", "-c", f"EDITOR=/bin/cat {TEMPER_EDIT_SHELL_COMMAND} /foo/bar"]))
 
 
-def test_script_fails_when_run_under_sudo(container: DockerContainer) -> None:
+@pytest.mark.parametrize("escalation_tool", ["sudo", "doas"])
+def test_script_fails_when_run_with_escalated_privileges(container: DockerContainer, escalation_tool: str) -> None:
     with pytest.raises(RuntimeError, match="Refusing to run with escalated privileges"):
         _ = parse_output(
             exec_as_user(
                 command=[
-                    "sudo",
-                    "--preserve-env=COVERAGE_FILE",
+                    escalation_tool,
                     "sh",
                     "-c",
-                    f"EDITOR=/bin/cat {TEMPER_EDIT_SHELL_COMMAND} /etc/motd",
+                    f'COVERAGE_FILE="/coverage/.coverage" EDITOR=/bin/cat {TEMPER_EDIT_SHELL_COMMAND} /etc/motd',
                 ],
                 container=container,
             )
