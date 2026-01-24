@@ -6,11 +6,5 @@ ARG IMAGE_TAG
 FROM docker.io/astral/uv:${IMAGE_TAG}
 
 RUN apk add coreutils && \
-    adduser -D -u 1000 user
-
-WORKDIR /app
-COPY pyproject.toml .
-COPY uv.lock .
-RUN uv pip install --group dev --system . && \
-    rm -r /app
-WORKDIR /root
+    adduser -D -u 1000 user && \
+    uv pip install --system coverage[toml]
