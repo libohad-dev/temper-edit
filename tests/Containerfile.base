@@ -5,6 +5,8 @@
 ARG IMAGE_TAG
 FROM docker.io/astral/uv:${IMAGE_TAG}
 
-RUN apk add coreutils && \
+RUN apk add coreutils sudo && \
+    echo '%wheel ALL=(ALL:ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel && \
     adduser -D -u 1000 user && \
+    adduser user wheel && \
     uv pip install --system coverage[toml]
