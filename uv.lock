@@ -230,6 +230,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/cc/48/d9f421cb8da5afaa1a64570d9989e00fb7955e6acddc5a12979f7666ef60/coverage-7.13.1-py3-none-any.whl", hash = "sha256:2016745cb3ba554469d02819d78958b571792bb68e31302610e898f80dd3a573", size = 210722, upload-time = "2025-12-28T15:42:54.901Z" },
 ]
 
+[package.optional-dependencies]
+toml = [
+    { name = "tomli", marker = "python_full_version <= '3.11'" },
+]
+
 [[package]]
 name = "debugpy"
 version = "1.8.19"
@@ -593,6 +598,20 @@ wheels = [
 ]
 
 [[package]]
+name = "pytest-cov"
+version = "6.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "coverage", extra = ["toml"] },
+    { name = "pluggy" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/30/4c/f883ab8f0daad69f47efdf95f55a66b51a8b939c430dadce0611508d9e99/pytest_cov-6.3.0.tar.gz", hash = "sha256:35c580e7800f87ce892e687461166e1ac2bcb8fb9e13aea79032518d6e503ff2", size = 70398, upload-time = "2025-09-06T15:40:14.361Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/b4/bb7263e12aade3842b938bc5c6958cae79c5ee18992f9b9349019579da0f/pytest_cov-6.3.0-py3-none-any.whl", hash = "sha256:440db28156d2468cafc0415b4f8e50856a0d11faefa38f30906048fe490f1749", size = 25115, upload-time = "2025-09-06T15:40:12.44Z" },
+]
+
+[[package]]
 name = "pytest-xdist"
 version = "3.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -784,9 +803,9 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "case-converter" },
-    { name = "coverage" },
     { name = "debugpy" },
     { name = "pytest" },
+    { name = "pytest-cov" },
     { name = "pytest-xdist" },
     { name = "tach" },
     { name = "testcontainers" },
@@ -798,9 +817,9 @@ requires-dist = [{ name = "pydantic", specifier = ">=2.12,<3" }]
 [package.metadata.requires-dev]
 dev = [
     { name = "case-converter", specifier = ">=1.2.0,<2" },
-    { name = "coverage", specifier = ">=7.13.1,<8" },
     { name = "debugpy", specifier = ">=1.8.14,<2" },
     { name = "pytest", specifier = ">=8.4.0,<9" },
+    { name = "pytest-cov", specifier = ">=6.2.1,<7" },
     { name = "pytest-xdist", specifier = ">=3.8.0,<4.0.0" },
     { name = "tach", specifier = ">=0.25,<1" },
     { name = "testcontainers", specifier = ">=4.13,<5" },

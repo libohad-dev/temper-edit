@@ -13,6 +13,15 @@ type Target = Callable[[], None]
 targets: dict[str, tuple[str, Target]] = {}
 
 PYTEST_BASE_COMMAND = ["pytest", "-vv", "--numprocesses", "auto"]
+COVERAGE_BASE_COMMAND = PYTEST_BASE_COMMAND + [
+    "--cov",
+    "src",
+    "--cov",
+    "tests",
+    "--cov-fail-under",
+    "0",
+    "--cov-report=",
+]
 
 
 def target(description: str) -> Callable[[Target], Target]:
@@ -59,8 +68,8 @@ def coverage_directory() -> Iterator[Path]:
             combine_container_coverage(Path(tmpdir))
 
 
-def pytest_command(container_cov_dir: Path) -> list[str]:
-    return PYTEST_BASE_COMMAND + ["--container-coverage-dir", str(container_cov_dir), "tests"]
+def coverage_run_command(container_cov_dir: Path) -> list[str]:
+    return COVERAGE_BASE_COMMAND + ["--container-coverage-dir", str(container_cov_dir), "tests"]
 
 
 @target("Build container images used by tests. Fails fast if any image build fails.")
@@ -73,7 +82,7 @@ def check_coverage() -> None:
     build_test_images()
     clean_coverage_files()
     with coverage_directory() as container_cov_dir:
-        execute(pytest_command(container_cov_dir), capture_output=False)
+        execute(coverage_run_command(container_cov_dir), capture_output=False)
     execute(["coverage", "report", "--fail-under", "100"], capture_output=False)
 
 
@@ -143,7 +152,7 @@ def test() -> None:
     build_test_images()
     clean_coverage_files()
     with coverage_directory() as container_cov_dir:
-        execute(pytest_command(container_cov_dir), capture_output=False)
+        execute(coverage_run_command(container_cov_dir), capture_output=False)
     execute(["coverage", "report"], capture_output=False)
 
 
@@ -152,7 +161,7 @@ def test_html() -> None:
     build_test_images()
     clean_coverage_files()
     with coverage_directory() as container_cov_dir:
-        execute(pytest_command(container_cov_dir), capture_output=False)
+        execute(coverage_run_command(container_cov_dir), capture_output=False)
     execute(["coverage", "html"], capture_output=False)
     execute(["xdg-open", "htmlcov/index.html"])
 
