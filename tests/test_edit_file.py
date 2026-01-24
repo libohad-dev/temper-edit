@@ -35,6 +35,29 @@ def test_root_user_update_file_and_preserve_permissions(container: DockerContain
         assert parse_output(container.exec(["cat", filename])) == content, f"Wrong file content for mode {octal}"
 
 
+def test_root_user_update_user_owned_file_and_preserve_permissions(container: DockerContainer) -> None:
+    script = textwrap.dedent(f"""\
+    #! /bin/sh
+    echo "$1" > "$2"
+    """)
+    container.exec(["sh", "-c", f"echo {shlex.quote(script)} > /tmp/edit-file"])
+    container.exec(["chmod", "u+x", "/tmp/edit-file"])
+
+    for mask in supermasks(0o600, upper_bound=0o744):
+        octal = oct(mask).removeprefix("0o")
+        filename = f"/tmp/file{octal}"
+        content = str(uuid.uuid4())
+        container.exec(["touch", filename])
+        container.exec(["chmod", octal, filename])
+        container.exec(["chown", "user:user", filename])
+        container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'])
+
+        uid, username, file_perms = stat_file(container=container, filename=filename)
+        assert (uid, username) == (1000, "user"), f"Wrong file ownership for mode {octal}"
+        assert file_perms.endswith(octal), f"Mismatched permissions for mode {octal}"
+        assert parse_output(container.exec(["cat", filename])) == content, f"Wrong file content for mode {octal}"
+
+
 def test_non_root_user_update_file_and_preserve_permissions(container: DockerContainer) -> None:
     script = textwrap.dedent(f"""\
     #! /bin/sh

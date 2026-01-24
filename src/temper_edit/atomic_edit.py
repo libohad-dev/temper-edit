@@ -40,8 +40,10 @@ class SandboxedFile:
             if exc_type is None:
                 content_changed = not filecmp.cmp(self.tempfile.name, self._orig_path, shallow=False)
                 if content_changed:
+                    original_file_stat = self.filename.stat()
                     shutil.copymode(self.filename, self.tempfile.name)
                     shutil.move(self.tempfile.name, self.filename)
+                    shutil.chown(self.filename, user=original_file_stat.st_uid, group=original_file_stat.st_gid)
                 else:
                     Path(self.tempfile.name).unlink()
         finally:
