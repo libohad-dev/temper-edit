@@ -221,3 +221,4 @@ __marimo__/
 
 # User-local Claude Code configuration
 CLAUDE.local.md
+.claude/*.local.*
