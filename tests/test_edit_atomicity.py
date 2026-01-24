@@ -96,7 +96,7 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
 
     mtime_before = get_mtime_ns(container=container, filename=filename)
 
-    with pytest.raises(RuntimeError) as exc_info:
+    with pytest.raises(RuntimeError, match="Editor failed. Temporary file preserved at:") as exc_info:
         _ = parse_output(
             container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'])
         )
@@ -112,6 +112,51 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
     # Verify temporary file was preserved and contains the expected content
     tempfile = extract_preserved_temporary_filename(exc_info)
     assert list_container_files(container=container, directory="/tmp") == {"/tmp/file.txt", "/tmp/edit-file", tempfile}
+    assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
+
+
+def test_temporary_file_is_preserved_on_update_failure(container: DockerContainer) -> None:
+    script = textwrap.dedent("""\
+    #! /bin/sh
+    echo "$1" > "$2"
+    """)
+    container.exec(["sh", "-c", f"echo {shlex.quote(script)} > /tmp/edit-file"])
+    container.exec(["chmod", "a+x", "/tmp/edit-file"])
+
+    filename = "/tmp/readonly-dir/file.txt"
+    original_content = "foobar"
+    content = str(uuid.uuid4())
+    container.exec(["mkdir", "/tmp/readonly-dir"])
+    container.exec(["sh", "-c", f"echo '{original_content}' > {filename}"])
+    # Make the directory read-only to prevent the final move
+    container.exec(["chmod", "555", "/tmp/readonly-dir"])
+
+    mtime_before = get_mtime_ns(container=container, filename=filename)
+
+    with pytest.raises(RuntimeError, match=f"Failed to update file: {filename}") as exc_info:
+        _ = parse_output(
+            exec_as_user(
+                command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'],
+                container=container,
+            )
+        )
+
+    mtime_after = get_mtime_ns(container=container, filename=filename)
+
+    uid, username, file_perms = stat_file(container=container, filename=filename)
+    assert (uid, username) == (0, "root"), "Wrong file ownership"
+    assert file_perms.endswith("644"), "Wrong file permissions"
+    assert parse_output(container.exec(["cat", filename])) == original_content, "Original file should be unchanged"
+    assert mtime_after == mtime_before, "File mtime should not have changed after failed update"
+
+    # Verify temporary file was preserved and contains the edited content
+    tempfile = extract_preserved_temporary_filename(exc_info)
+    assert list_container_files(container=container, directory="/tmp") == {
+        "/tmp/edit-file",
+        "/tmp/readonly-dir",
+        tempfile,
+    }
+    assert list_container_files(container=container, directory="/tmp/readonly-dir") == {filename}
     assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
 
 
