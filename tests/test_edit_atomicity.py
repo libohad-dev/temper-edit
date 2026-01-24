@@ -6,6 +6,7 @@ import re
 import shlex
 import textwrap
 import uuid
+from pathlib import Path
 
 import pytest
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
@@ -13,9 +14,12 @@ from testcontainers.core.container import DockerContainer  # type: ignore[import
 from tests.utils import TEMPER_EDIT_SHELL_COMMAND, exec_as_user, get_mtime_ns, parse_output, stat_file
 
 
-def list_tmp_files(container: DockerContainer) -> set[str]:
-    """List all files in /tmp directory."""
-    return set(parse_output(container.exec(["ls", "-1", "/tmp"])).splitlines())
+def list_container_files(container: DockerContainer, directory: str) -> set[str]:
+    """List all files in a directory."""
+    return {
+        str(Path(directory) / filename)
+        for filename in parse_output(container.exec(["ls", "-1", directory])).splitlines()
+    }
 
 
 def test_original_file_is_not_modified_midway(container: DockerContainer) -> None:
@@ -58,7 +62,12 @@ def test_original_file_is_not_modified_midway(container: DockerContainer) -> Non
         assert parse_output(container.exec(["cat", fn])) == "", f"Wrong file content in {fn}"
 
     # Verify temporary files were cleaned up
-    assert list_tmp_files(container) == {"file.txt", "edit-file", "pre-edit", "post-edit"}
+    assert list_container_files(container=container, directory="/tmp") == {
+        "/tmp/file.txt",
+        "/tmp/edit-file",
+        "/tmp/pre-edit",
+        "/tmp/post-edit",
+    }
 
 
 def test_original_file_is_not_modified_when_the_editor_fails(container: DockerContainer) -> None:
@@ -97,7 +106,7 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
     assert match is not None, f"Error message should contain preserved temp file path, got: {error_output}"
     # Verify temporary file was preserved and contains the expected content
     tempfile = match["tempfile"]
-    assert list_tmp_files(container) == {"file.txt", "edit-file", tempfile.removeprefix("/tmp/")}
+    assert list_container_files(container=container, directory="/tmp") == {"/tmp/file.txt", "/tmp/edit-file", tempfile}
     assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
 
 
@@ -129,4 +138,4 @@ def test_original_file_is_not_modified_when_content_unchanged(container: DockerC
     assert mtime_after == mtime_before, "File mtime should not have changed when content is unchanged"
 
     # Verify temporary files were cleaned up
-    assert list_tmp_files(container) == {"file.txt", "noop-editor"}
+    assert list_container_files(container=container, directory="/tmp") == {"/tmp/file.txt", "/tmp/noop-editor"}
