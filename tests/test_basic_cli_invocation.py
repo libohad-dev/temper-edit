@@ -5,7 +5,13 @@
 import pytest
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
 
-from tests.utils import TEMPER_EDIT_COMMAND, TEMPER_EDIT_SHELL_COMMAND, check_exception_content, parse_output
+from tests.utils import (
+    TEMPER_EDIT_COMMAND,
+    TEMPER_EDIT_SHELL_COMMAND,
+    check_exception_content,
+    exec_as_user,
+    parse_output,
+)
 
 
 def test_script_fails_without_arguments(container: DockerContainer) -> None:
@@ -31,3 +37,19 @@ def test_script_fails_with_invalid_editor(container: DockerContainer) -> None:
 def test_script_fails_with_missing_file(container: DockerContainer) -> None:
     with pytest.raises(RuntimeError, check=check_exception_content("No such file or directory: '/foo/bar'")):
         _ = parse_output(container.exec(["sh", "-c", f"EDITOR=/bin/cat {TEMPER_EDIT_SHELL_COMMAND} /foo/bar"]))
+
+
+def test_script_fails_when_run_under_sudo(container: DockerContainer) -> None:
+    with pytest.raises(RuntimeError, match="Refusing to run with escalated privileges"):
+        _ = parse_output(
+            exec_as_user(
+                command=[
+                    "sudo",
+                    "--preserve-env=COVERAGE_FILE",
+                    "sh",
+                    "-c",
+                    f"EDITOR=/bin/cat {TEMPER_EDIT_SHELL_COMMAND} /etc/motd",
+                ],
+                container=container,
+            )
+        )

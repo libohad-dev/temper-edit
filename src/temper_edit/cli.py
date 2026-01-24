@@ -43,6 +43,10 @@ def run() -> None:
 
     from .config import ENVVARS
 
+    if "SUDO_USER" in os.environ:
+        print("Refusing to run with escalated privileges", file=sys.stderr)
+        sys.exit(1)
+
     parser = argparse.ArgumentParser("Edit a file atomically")
     parser.add_argument("filename", type=Path, help="File to edit")
 
