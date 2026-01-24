@@ -4,6 +4,7 @@
 
 import shlex
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import cast
 
 from docker.models.containers import ExecResult
@@ -40,12 +41,23 @@ def check_exception_content(subst: str) -> Callable[[RuntimeError], bool]:
     return checker
 
 
-def stat_file(container: DockerContainer, filename: str) -> tuple[int, str, str]:
+@dataclass(frozen=True)
+class FileStat:
+    mode: str
+    uid: int
+    username: str
+
+    @property
+    def user(self) -> tuple[int, str]:
+        return (self.uid, self.username)
+
+
+def stat_file(container: DockerContainer, filename: str) -> FileStat:
     stat_result = parse_output(container.exec(["stat", "--format", "%u %U %f", filename]))
     uid, username, file_perms_hex = stat_result.split()
-    file_perms = oct(int(file_perms_hex, 16))
+    mode = oct(int(file_perms_hex, 16))
 
-    return int(uid), username, file_perms
+    return FileStat(mode=mode, uid=int(uid), username=username)
 
 
 def get_mtime_ns(container: DockerContainer, filename: str) -> float:

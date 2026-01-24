@@ -61,9 +61,9 @@ def test_original_file_is_not_modified_midway(container: DockerContainer) -> Non
 
     mtime_after = get_mtime_ns(container=container, filename=filename)
 
-    uid, username, file_perms = stat_file(container=container, filename=filename)
-    assert (uid, username) == (1000, "user"), "Wrong file ownership"
-    assert file_perms.endswith("644"), "Wrong file permissions"
+    stat = stat_file(container=container, filename=filename)
+    assert stat.user == (1000, "user"), "Wrong file ownership"
+    assert stat.mode.endswith("644"), "Wrong file permissions"
     assert parse_output(container.exec(["cat", filename])) == content, "Wrong file content"
     assert mtime_after > mtime_before, "File mtime should have increased after successful edit"
 
@@ -103,9 +103,9 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
 
     mtime_after = get_mtime_ns(container=container, filename=filename)
 
-    uid, username, file_perms = stat_file(container=container, filename=filename)
-    assert (uid, username) == (0, "root"), "Wrong file ownership"
-    assert file_perms.endswith("644"), "Wrong file permissions"
+    stat = stat_file(container=container, filename=filename)
+    assert stat.user == (0, "root"), "Wrong file ownership"
+    assert stat.mode.endswith("644"), "Wrong file permissions"
     assert parse_output(container.exec(["cat", filename])) == original_content, "Wrong file content"
     assert mtime_after == mtime_before, "File mtime should not have changed after failed edit"
 
@@ -143,9 +143,9 @@ def test_temporary_file_is_preserved_on_update_failure(container: DockerContaine
 
     mtime_after = get_mtime_ns(container=container, filename=filename)
 
-    uid, username, file_perms = stat_file(container=container, filename=filename)
-    assert (uid, username) == (0, "root"), "Wrong file ownership"
-    assert file_perms.endswith("644"), "Wrong file permissions"
+    stat = stat_file(container=container, filename=filename)
+    assert stat.user == (0, "root"), "Wrong file ownership"
+    assert stat.mode.endswith("644"), "Wrong file permissions"
     assert parse_output(container.exec(["cat", filename])) == original_content, "Original file should be unchanged"
     assert mtime_after == mtime_before, "File mtime should not have changed after failed update"
 
@@ -181,9 +181,9 @@ def test_original_file_is_not_modified_when_content_unchanged(container: DockerC
 
     mtime_after = get_mtime_ns(container=container, filename=filename)
 
-    uid, username, file_perms = stat_file(container=container, filename=filename)
-    assert (uid, username) == (0, "root"), "Wrong file ownership"
-    assert file_perms.endswith("644"), "Wrong file permissions"
+    stat = stat_file(container=container, filename=filename)
+    assert stat.user == (0, "root"), "Wrong file ownership"
+    assert stat.mode.endswith("644"), "Wrong file permissions"
     assert parse_output(container.exec(["cat", filename])) == original_content, "File content should be unchanged"
     assert mtime_after == mtime_before, "File mtime should not have changed when content is unchanged"
 

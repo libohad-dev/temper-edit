@@ -29,9 +29,9 @@ def test_root_user_update_file_and_preserve_permissions(container: DockerContain
         container.exec(["chmod", octal, filename])
         container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'])
 
-        uid, username, file_perms = stat_file(container=container, filename=filename)
-        assert (uid, username) == (0, "root"), f"Wrong file ownership for mode {octal}"
-        assert file_perms.endswith(octal), f"Mismatched permissions for mode {octal}"
+        stat = stat_file(container=container, filename=filename)
+        assert stat.user == (0, "root"), f"Wrong file ownership for mode {octal}"
+        assert stat.mode.endswith(octal), f"Mismatched permissions for mode {octal}"
         assert parse_output(container.exec(["cat", filename])) == content, f"Wrong file content for mode {octal}"
 
 
@@ -52,9 +52,9 @@ def test_root_user_update_user_owned_file_and_preserve_permissions(container: Do
         container.exec(["chown", "user:user", filename])
         container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'])
 
-        uid, username, file_perms = stat_file(container=container, filename=filename)
-        assert (uid, username) == (1000, "user"), f"Wrong file ownership for mode {octal}"
-        assert file_perms.endswith(octal), f"Mismatched permissions for mode {octal}"
+        stat = stat_file(container=container, filename=filename)
+        assert stat.user == (1000, "user"), f"Wrong file ownership for mode {octal}"
+        assert stat.mode.endswith(octal), f"Mismatched permissions for mode {octal}"
         assert parse_output(container.exec(["cat", filename])) == content, f"Wrong file content for mode {octal}"
 
 
@@ -79,9 +79,9 @@ def test_non_root_user_update_file_and_preserve_permissions(container: DockerCon
             container=container,
         )
 
-        uid, username, file_perms = stat_file(container=container, filename=filename)
-        assert (uid, username) == (1000, "user"), f"Wrong file ownership for mode {octal}"
-        assert file_perms.endswith(octal), f"Mismatched permissions for mode {octal}"
+        stat = stat_file(container=container, filename=filename)
+        assert stat.user == (1000, "user"), f"Wrong file ownership for mode {octal}"
+        assert stat.mode.endswith(octal), f"Mismatched permissions for mode {octal}"
         assert parse_output(container.exec(["cat", filename])) == content, f"Wrong file content for mode {octal}"
 
 
@@ -105,7 +105,7 @@ def test_non_root_user_cannot_update_root_owned_file(container: DockerContainer)
             )
         )
 
-    uid, username, file_perms = stat_file(container=container, filename=filename)
-    assert (uid, username) == (0, "root"), "Wrong file ownership"
-    assert file_perms.endswith("644"), "Wrong file permissions"
+    stat = stat_file(container=container, filename=filename)
+    assert stat.user == (0, "root"), "Wrong file ownership"
+    assert stat.mode.endswith("644"), "Wrong file permissions"
     assert parse_output(container.exec(["cat", filename])) == "", "Wrong file content"
