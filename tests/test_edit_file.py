@@ -100,7 +100,7 @@ def test_non_root_user_cannot_update_root_owned_file(container: DockerContainer)
     filename = "/tmp/file.txt"
     content = str(uuid.uuid4())
     container.exec(["touch", filename])
-    with pytest.raises(RuntimeError, match="Permission denied"):
+    with pytest.raises(RuntimeError, match=r"PermissionError: \[Errno 1\] Operation not permitted:"):
         _ = parse_output(
             exec_as_user(
                 command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'],

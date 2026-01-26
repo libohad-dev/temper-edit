@@ -28,9 +28,10 @@ class SandboxedFile:
 
     def commit_file(self) -> None:
         original_file_stat = self.filename.stat()
+        Path(self.tempfile.name).chmod(0o000)
+        shutil.chown(self.tempfile.name, user=original_file_stat.st_uid, group=original_file_stat.st_gid)
         shutil.copymode(self.filename, self.tempfile.name)
         shutil.move(self.tempfile.name, self.filename)
-        shutil.chown(self.filename, user=original_file_stat.st_uid, group=original_file_stat.st_gid)
 
     def __enter__(self) -> _TemporaryFileWrapper:  # type: ignore [type-arg]
         self.tempfile.__enter__()
