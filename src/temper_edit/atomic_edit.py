@@ -4,11 +4,27 @@
 
 import filecmp
 import shutil
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from types import TracebackType
 from typing import Literal
+
+
+def commit_file_steps(source: Path, target: Path) -> Iterator[str]:
+    """
+    Perform a secure and atomic update, using `source` to replace `target` while
+    preserving the `target` file's ownership and permissions.
+    """
+    target_file_stat = target.stat()
+    source.chmod(0o000)
+    yield "strip permissions"
+    shutil.chown(source, user=target_file_stat.st_uid, group=target_file_stat.st_gid)
+    yield "change ownership"
+    shutil.copymode(target, source)
+    yield "copy permissions"
+    shutil.move(source, target)
 
 
 @dataclass
@@ -27,11 +43,9 @@ class SandboxedFile:
         shutil.copyfile(self.tempfile.name, self._orig_path)
 
     def commit_file(self) -> None:
-        original_file_stat = self.filename.stat()
-        Path(self.tempfile.name).chmod(0o000)
-        shutil.chown(self.tempfile.name, user=original_file_stat.st_uid, group=original_file_stat.st_gid)
-        shutil.copymode(self.filename, self.tempfile.name)
-        shutil.move(self.tempfile.name, self.filename)
+        """Execute all commit steps."""
+        for _ in commit_file_steps(Path(self.tempfile.name), self.filename):
+            pass
 
     def __enter__(self) -> _TemporaryFileWrapper:  # type: ignore [type-arg]
         self.tempfile.__enter__()

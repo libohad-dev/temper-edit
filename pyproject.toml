@@ -36,7 +36,10 @@ dev = [
 
 [tool.coverage.run]
 omit = [
+  # keep-sorted start
+  "tests/commit_security_script.py",
   "tests/conftest.py",
+  # keep-sorted end
 ]
 branch = true
 parallel = true
