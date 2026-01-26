@@ -19,7 +19,7 @@ def main(filename: Path, editor_config: EditorConfig) -> subprocess.CompletedPro
 
     editor = select_editor(editor_config)
 
-    sandbox = SandboxedFile.spawn(filename=filename)
+    sandbox = SandboxedFile(filename=filename)
     try:
         with sandbox as sandboxed_file:
             res = subprocess.run(editor + [sandboxed_file.name], capture_output=True)
