@@ -12,11 +12,11 @@ from testcontainers.core.image import DockerImage  # type: ignore[import-untyped
 
 tags = [
     # keep-sorted start
-    "python3.10-alpine3.23",
-    "python3.11-alpine3.23",
-    "python3.12-alpine3.23",
-    "python3.13-alpine3.23",
-    "python3.14-alpine3.23",
+    "3.10.19-alpine3.23",
+    "3.11.14-alpine3.23",
+    "3.12.12-alpine3.23",
+    "3.13.11-alpine3.23",
+    "3.14.2-alpine3.23",
     # keep-sorted end
 ]
 

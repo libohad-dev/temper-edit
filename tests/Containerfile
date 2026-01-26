@@ -9,10 +9,8 @@ FROM localhost/temper-edit-test-base:${IMAGE_TAG}
 WORKDIR /app
 COPY --chmod=444 pyproject.toml .
 COPY src/ .
-RUN uv venv --system-site-packages && \
-    uv pip install --no-deps --editable . && \
-    chmod --recursive a+rX temper_edit && \
-    rm /tmp/uv-*.lock
+RUN pip install --break-system-packages --no-cache-dir --root-user-action=ignore --editable . && \
+    chmod --recursive a+rX temper_edit
 WORKDIR /root
 
 ENTRYPOINT ["/bin/sleep"]

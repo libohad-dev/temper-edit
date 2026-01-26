@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 ARG IMAGE_TAG
-FROM docker.io/astral/uv:${IMAGE_TAG}
+FROM docker.io/library/python:${IMAGE_TAG}
 
 RUN apk add coreutils doas sudo && \
     echo '%wheel ALL=(ALL:ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel && \
     echo 'permit nopass :wheel' >> /etc/doas.d/doas.conf && \
     adduser -D -u 1000 user && \
     adduser user wheel && \
-    uv pip install --system coverage[toml]
+    pip install --break-system-packages --no-cache-dir --root-user-action=ignore \
+        coverage[toml]
