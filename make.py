@@ -100,6 +100,8 @@ def list_pragmas() -> None:
                 "# pragma:",
                 "--regexp",
                 "# type: ignore",
+                "--regexp",
+                "# noqa:",
             ]
             + tracked_files
         )
