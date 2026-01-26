@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Ohad Livne <libohad-dev@proton.me>
+#
+# SPDX-License-Identifier: CC0-1.0
+
+# Exclude everything by default
+*
+
+# Allow only what's needed for container builds
+!pyproject.toml
+!src/**
