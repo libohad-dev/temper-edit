@@ -13,13 +13,13 @@ from .utils import keep_keys
 logger = getLogger(__name__)
 
 
-def main(filename: Path, editor_config: EditorConfig) -> subprocess.CompletedProcess[bytes]:
+def main(filename: Path, editor_config: EditorConfig, tmpdir: Path | None) -> subprocess.CompletedProcess[bytes]:
     from .atomic_edit import SandboxedFile
     from .editor import select_editor
 
     editor = select_editor(editor_config)
 
-    sandbox = SandboxedFile(filename=filename)
+    sandbox = SandboxedFile(filename=filename, tmpdir=tmpdir)
     try:
         with sandbox as sandboxed_file:
             res = subprocess.run(editor + [sandboxed_file.name], capture_output=True)
@@ -52,6 +52,7 @@ def run() -> None:
 
     parser = argparse.ArgumentParser("Edit a file atomically")
     parser.add_argument("filename", type=Path, help="File to edit")
+    parser.add_argument("--tmpdir", type=Path, help="Directory for temporary files")
 
     args = parser.parse_args()
 
@@ -60,4 +61,4 @@ def run() -> None:
     logger.debug("Loaded environment variables", extra=dict(env_config=json.dumps(env_config)))
     editor_config = EditorConfig.from_env(env_config)
 
-    main(filename=args.filename, editor_config=editor_config)
+    main(filename=args.filename, editor_config=editor_config, tmpdir=args.tmpdir)

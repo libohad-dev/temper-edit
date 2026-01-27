@@ -54,3 +54,42 @@ def test_tmpdir_envvar_is_respected(container: DockerContainer) -> None:
     }
     assert list_container_files(container=container, directory=custom_tmpdir) == {tempfile}
     assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
+
+
+def test_tmpdir_cli_argument(container: DockerContainer) -> None:
+    # Fail after editing the temporary file
+    script = textwrap.dedent("""\
+    #! /bin/sh
+    echo "$1" > "$2"
+    exit 1
+    """)
+    container.exec(["sh", "-c", f"echo {shlex.quote(script)} > /tmp/edit-file"])
+    container.exec(["chmod", "u+x", "/tmp/edit-file"])
+
+    filename = "/tmp/file.txt"
+    container.exec(["touch", filename])
+
+    custom_tmpdir = "/tmp/custom-tmpdir"
+    container.exec(["mkdir", "-p", custom_tmpdir])
+
+    content = str(uuid.uuid4())
+    with pytest.raises(RuntimeError, match="Editor failed. Temporary file preserved at:") as exc_info:
+        _ = parse_output(
+            container.exec(
+                [
+                    "sh",
+                    "-c",
+                    f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} --tmpdir {custom_tmpdir} {filename}',
+                ]
+            )
+        )
+
+    # Verify temporary file was created in the custom tmpdir, preserved, and contains the expected content
+    tempfile = extract_preserved_temporary_filename(exc_info)
+    assert list_container_files(container=container, directory="/tmp") == {
+        "/tmp/file.txt",
+        "/tmp/edit-file",
+        custom_tmpdir,
+    }
+    assert list_container_files(container=container, directory=custom_tmpdir) == {tempfile}
+    assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"

@@ -30,9 +30,10 @@ def commit_file_steps(source: Path, target: Path) -> Iterator[str]:
 @dataclass
 class SandboxedFile:
     filename: Path
+    tmpdir: Path | None = None
 
     def __post_init__(self) -> None:
-        self.tempfile = NamedTemporaryFile(delete=False)  # noqa: SIM115
+        self.tempfile = NamedTemporaryFile(dir=self.tmpdir, delete=False)  # noqa: SIM115
 
     @property
     def _orig_path(self) -> str:
