@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import re
 import shlex
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import cast
 
+import pytest
 from docker.models.containers import ExecResult
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
 
@@ -74,3 +77,20 @@ def get_mtime_ns(container: DockerContainer, filename: str) -> float:
 
 def exec_as_user(command: list[str], container: DockerContainer, user: str = "user") -> ExecResult:
     return container.exec(["su", "-", user, "-c", f'COVERAGE_FILE="/coverage/.coverage" {shlex.join(command)}'])  # type: ignore[no-any-return]
+
+
+def list_container_files(container: DockerContainer, directory: str) -> set[str]:
+    """List all files in a directory."""
+    return {
+        str(Path(directory) / filename)
+        for filename in parse_output(container.exec(["ls", "-1", directory])).splitlines()
+    }
+
+
+def extract_preserved_temporary_filename(exc_info: pytest.ExceptionInfo[RuntimeError]) -> str:
+    # Validate error message format and extract preserved temp file path
+    error_output = exc_info.value.args[0].decode("utf-8")
+    match = re.search(r"Temporary file preserved at: (?P<tempfile>/tmp/\S+)", error_output)
+    assert match is not None, f"Error message should contain preserved temp file path, got: {error_output}"
+
+    return match["tempfile"]

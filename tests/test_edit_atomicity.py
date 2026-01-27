@@ -2,33 +2,22 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import re
 import shlex
 import textwrap
 import uuid
-from pathlib import Path
 
 import pytest
 from testcontainers.core.container import DockerContainer  # type: ignore[import-untyped]
 
-from tests.utils import TEMPER_EDIT_SHELL_COMMAND, exec_as_user, get_mtime_ns, parse_output, stat_file
-
-
-def list_container_files(container: DockerContainer, directory: str) -> set[str]:
-    """List all files in a directory."""
-    return {
-        str(Path(directory) / filename)
-        for filename in parse_output(container.exec(["ls", "-1", directory])).splitlines()
-    }
-
-
-def extract_preserved_temporary_filename(exc_info: pytest.ExceptionInfo[RuntimeError]) -> str:
-    # Validate error message format and extract preserved temp file path
-    error_output = exc_info.value.args[0].decode("utf-8")
-    match = re.search(r"Temporary file preserved at: (?P<tempfile>/tmp/\S+)", error_output)
-    assert match is not None, f"Error message should contain preserved temp file path, got: {error_output}"
-
-    return match["tempfile"]
+from tests.utils import (
+    TEMPER_EDIT_SHELL_COMMAND,
+    exec_as_user,
+    extract_preserved_temporary_filename,
+    get_mtime_ns,
+    list_container_files,
+    parse_output,
+    stat_file,
+)
 
 
 def test_original_file_is_not_modified_midway(container: DockerContainer) -> None:
