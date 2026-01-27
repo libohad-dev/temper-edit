@@ -156,3 +156,46 @@ def test_cli_tmpdir_must_exist(container: DockerContainer) -> None:
 
     # Verify no temporary file was created
     assert list_container_files(container=container, directory="/tmp") == {"/tmp/file.txt", "/tmp/edit-file"}
+
+
+def test_cli_tmpdir_has_higher_priority_than_envvar(container: DockerContainer) -> None:
+    # Fail after editing the temporary file
+    script = textwrap.dedent("""\
+    #! /bin/sh
+    echo "$1" > "$2"
+    exit 1
+    """)
+    container.exec(["sh", "-c", f"echo {shlex.quote(script)} > /tmp/edit-file"])
+    container.exec(["chmod", "u+x", "/tmp/edit-file"])
+
+    filename = "/tmp/file.txt"
+    container.exec(["touch", filename])
+
+    cli_tmpdir = "/tmp/cli-tmpdir"
+    envvar_tmpdir = "/tmp/envvar-tmpdir"
+    container.exec(["mkdir", "-p", cli_tmpdir])
+    container.exec(["mkdir", "-p", envvar_tmpdir])
+
+    content = str(uuid.uuid4())
+    with pytest.raises(RuntimeError, match="Editor failed. Temporary file preserved at:") as exc_info:
+        _ = parse_output(
+            container.exec(
+                [
+                    "sh",
+                    "-c",
+                    f'TMPDIR="{envvar_tmpdir}" EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} --tmpdir {cli_tmpdir} {filename}',
+                ]
+            )
+        )
+
+    # Verify temporary file was created in the CLI custom tmpdir, preserved, and contains the expected content
+    tempfile = extract_preserved_temporary_filename(exc_info)
+    assert list_container_files(container=container, directory="/tmp") == {
+        "/tmp/file.txt",
+        "/tmp/edit-file",
+        cli_tmpdir,
+        envvar_tmpdir,
+    }
+    assert list_container_files(container=container, directory=cli_tmpdir) == {tempfile}
+    assert list_container_files(container=container, directory=envvar_tmpdir) == set()
+    assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
