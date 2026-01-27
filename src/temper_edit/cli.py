@@ -52,7 +52,7 @@ def run() -> None:
 
     parser = argparse.ArgumentParser("Edit a file atomically")
     parser.add_argument("filename", type=Path, help="File to edit")
-    parser.add_argument("--tmpdir", type=Path, help="Directory for temporary files")
+    parser.add_argument("--tmpdir", default=os.environ.get("TMPDIR"), type=Path, help="Directory for temporary files")
 
     args = parser.parse_args()
 
