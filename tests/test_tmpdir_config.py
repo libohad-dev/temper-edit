@@ -11,6 +11,7 @@ from testcontainers.core.container import DockerContainer  # type: ignore[import
 
 from tests.utils import (
     TEMPER_EDIT_SHELL_COMMAND,
+    exec_as_user,
     extract_preserved_temporary_filename,
     list_container_files,
     parse_output,
@@ -88,6 +89,44 @@ def test_envvar_tmpdir_must_exist(container: DockerContainer) -> None:
     assert list_container_files(container=container, directory="/tmp") == {"/tmp/file.txt", "/tmp/edit-file"}
 
 
+def test_envvar_tmpdir_must_be_writable(container: DockerContainer) -> None:
+    # Fail after editing the temporary file
+    script = textwrap.dedent("""\
+    #! /bin/sh
+    echo "$1" > "$2"
+    exit 1
+    """)
+    container.exec(["sh", "-c", f"echo {shlex.quote(script)} > /tmp/edit-file"])
+    container.exec(["chmod", "a+x", "/tmp/edit-file"])
+
+    filename = "/tmp/file.txt"
+    container.exec(["touch", filename])
+
+    custom_tmpdir = "/tmp/custom-tmpdir"
+    container.exec(["mkdir", "-p", custom_tmpdir])
+
+    content = str(uuid.uuid4())
+    with pytest.raises(RuntimeError, match=r"PermissionError: \[Errno 13\] Permission denied: \\'/tmp/custom-tmpdir/"):
+        _ = parse_output(
+            exec_as_user(
+                command=[
+                    "sh",
+                    "-c",
+                    f'TMPDIR="{custom_tmpdir}" EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}',
+                ],
+                container=container,
+            )
+        )
+
+    # Verify no temporary file was created
+    assert list_container_files(container=container, directory="/tmp") == {
+        "/tmp/file.txt",
+        "/tmp/edit-file",
+        custom_tmpdir,
+    }
+    assert list_container_files(container=container, directory=custom_tmpdir) == set()
+
+
 def test_tmpdir_cli_argument(container: DockerContainer) -> None:
     # Fail after editing the temporary file
     script = textwrap.dedent("""\
@@ -157,6 +196,44 @@ def test_cli_tmpdir_must_exist(container: DockerContainer) -> None:
 
     # Verify no temporary file was created
     assert list_container_files(container=container, directory="/tmp") == {"/tmp/file.txt", "/tmp/edit-file"}
+
+
+def test_cli_tmpdir_must_be_writable(container: DockerContainer) -> None:
+    # Fail after editing the temporary file
+    script = textwrap.dedent("""\
+    #! /bin/sh
+    echo "$1" > "$2"
+    exit 1
+    """)
+    container.exec(["sh", "-c", f"echo {shlex.quote(script)} > /tmp/edit-file"])
+    container.exec(["chmod", "a+x", "/tmp/edit-file"])
+
+    filename = "/tmp/file.txt"
+    container.exec(["touch", filename])
+
+    custom_tmpdir = "/tmp/custom-tmpdir"
+    container.exec(["mkdir", "-p", custom_tmpdir])
+
+    content = str(uuid.uuid4())
+    with pytest.raises(RuntimeError, match=r"PermissionError: \[Errno 13\] Permission denied: \\'/tmp/custom-tmpdir/"):
+        _ = parse_output(
+            exec_as_user(
+                command=[
+                    "sh",
+                    "-c",
+                    f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} --tmpdir {custom_tmpdir} {filename}',
+                ],
+                container=container,
+            )
+        )
+
+    # Verify no temporary file was created
+    assert list_container_files(container=container, directory="/tmp") == {
+        "/tmp/file.txt",
+        "/tmp/edit-file",
+        custom_tmpdir,
+    }
+    assert list_container_files(container=container, directory=custom_tmpdir) == set()
 
 
 def test_cli_tmpdir_has_higher_priority_than_envvar(container: DockerContainer) -> None:
