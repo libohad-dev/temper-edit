@@ -88,7 +88,7 @@ def check_coverage() -> None:
 def list_pragmas() -> None:
     from pathlib import Path
 
-    tracked_files = sorted(execute(["git", "ls-tree", "-r", "--name-only", "HEAD"]).split())
+    tracked_files = sorted(execute(["git", "ls-tree", "-r", "--name-only", "HEAD"]).splitlines())
     this_file = str(Path(__file__).relative_to(Path.cwd()))
     tracked_files.remove(this_file)
     try:
