@@ -41,7 +41,7 @@ def test_script_fails_with_missing_file(container: DockerContainer) -> None:
 
 @pytest.mark.parametrize("escalation_tool", ["sudo", "doas"])
 def test_script_fails_when_run_with_escalated_privileges(container: DockerContainer, escalation_tool: str) -> None:
-    with pytest.raises(RuntimeError, match="Refusing to run with escalated privileges"):
+    with pytest.raises(RuntimeError, match=f"Refusing to run under {escalation_tool}"):
         _ = parse_output(
             exec_as_user(
                 command=[

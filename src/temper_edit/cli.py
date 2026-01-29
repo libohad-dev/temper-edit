@@ -4,6 +4,7 @@
 
 import subprocess
 import sys
+from collections.abc import Mapping
 from functools import partial
 from logging import getLogger
 from pathlib import Path
@@ -18,6 +19,27 @@ logger = getLogger(__name__)
 
 class SandboxFactory(Protocol):
     def __call__(self, filename: Path, tmpdir: Path | None) -> FileSandbox: ...
+
+
+# Mapping of environment variables set by privilege escalation tools to their program names
+ESCALATION_ENVVARS: dict[str, str] = {
+    "SUDO_USER": "sudo",
+    "DOAS_USER": "doas",
+    "PKEXEC_UID": "pkexec",  # Note: pkexec rejection is not tested in the alpine-based images
+}
+
+
+def detect_privilege_escalation(environ: Mapping[str, str]) -> str | None:
+    """
+    Detect if running under a privilege escalation tool.
+
+    Returns the name of the escalation program if detected, None otherwise.
+    Note: pkexec detection is not tested in the alpine-based test images.
+    """
+    for envvar, program in ESCALATION_ENVVARS.items():
+        if envvar in environ:
+            return program
+    return None
 
 
 def main(
@@ -54,11 +76,12 @@ def run() -> None:
 
     from .config import ENVVARS
 
-    # Detect usage of privilege escalation tools: sudo, doas, pkexec
-    # Note: pkexec rejection is not tested in the alpine-based images
-    privilege_escalation_envvars = {"SUDO_USER", "DOAS_USER", "PKEXEC_UID"}
-    if privilege_escalation_envvars & os.environ.keys():
-        print("Refusing to run with escalated privileges", file=sys.stderr)
+    if escalation_program := detect_privilege_escalation(os.environ):
+        print(
+            f"Refusing to run under {escalation_program}.\n"
+            f"To edit files requiring elevated permissions, use: temper-edit --elevate {escalation_program} <filename>",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     parser = argparse.ArgumentParser("Edit a file atomically")
