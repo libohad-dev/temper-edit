@@ -6,12 +6,14 @@ import filecmp
 import shutil
 import subprocess
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from types import TracebackType
 from typing import Literal
+
+PrivilegedRunner = Callable[[list[str]], subprocess.CompletedProcess[bytes]]
 
 
 def commit_file_steps(source: Path, target: Path) -> Iterator[str]:
@@ -27,6 +29,21 @@ def commit_file_steps(source: Path, target: Path) -> Iterator[str]:
     shutil.copymode(target, source)
     yield "copy permissions"
     shutil.move(source, target)
+
+
+def elevated_commit_file_steps(source: Path, target: Path, run_privileged: PrivilegedRunner) -> Iterator[str]:
+    """
+    Perform a secure and atomic update, using `source` to replace `target` while
+    preserving the `target` file's ownership and permissions.
+    Access to the `target` file can be restricted to unprivileged users.
+    """
+    source.chmod(0o000)
+    yield "strip permissions"
+    run_privileged(["chown", "--reference", str(target), str(source)])
+    yield "change ownership"
+    run_privileged(["chmod", "--reference", str(target), str(source)])
+    yield "copy permissions"
+    run_privileged(["mv", "--force", "--", str(source), str(target)])
 
 
 @dataclass(kw_only=True)
@@ -103,7 +120,5 @@ class ElevatedPermissionSandbox(FileSandbox):
         shutil.copyfile(self.tempfile.name, self._orig_path)
 
     def commit_file(self) -> None:
-        Path(self.tempfile.name).chmod(0o000)
-        self._run_privileged(["chown", "--reference", str(self.filename), self.tempfile.name])
-        self._run_privileged(["chmod", "--reference", str(self.filename), self.tempfile.name])
-        self._run_privileged(["mv", "--force", "--", self.tempfile.name, str(self.filename)])
+        for _ in elevated_commit_file_steps(Path(self.tempfile.name), self.filename, self._run_privileged):
+            pass

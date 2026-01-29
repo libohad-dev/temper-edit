@@ -55,6 +55,7 @@ omit = [
   # keep-sorted start
   "tests/commit_security_script.py",
   "tests/conftest.py",
+  "tests/elevated_commit_security_script.py",
   # keep-sorted end
 ]
 branch = true
