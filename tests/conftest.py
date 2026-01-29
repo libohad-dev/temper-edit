@@ -17,6 +17,7 @@ tags = [
     "3.12.12-alpine3.23",
     "3.13.11-alpine3.23",
     "3.14.2-alpine3.23",
+    "3.15.0a5-alpine3.23",
     # keep-sorted end
 ]
 
