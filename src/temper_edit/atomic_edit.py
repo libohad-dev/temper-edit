@@ -4,6 +4,7 @@
 
 import filecmp
 import shutil
+from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,7 +29,9 @@ def commit_file_steps(source: Path, target: Path) -> Iterator[str]:
 
 
 @dataclass
-class SandboxedFile:
+class FileSandbox(ABC):
+    """Abstract base class for sandboxed file editing."""
+
     filename: Path
     tmpdir: Path | None = None
 
@@ -39,14 +42,13 @@ class SandboxedFile:
     def _orig_path(self) -> str:
         return self.tempfile.name + ".orig"
 
-    def stage_file(self) -> None:
-        shutil.copyfile(self.filename, self.tempfile.name)
-        shutil.copyfile(self.tempfile.name, self._orig_path)
+    @abstractmethod
+    def stage_file(self) -> None:  # pragma: no cover
+        raise NotImplementedError()
 
-    def commit_file(self) -> None:
-        """Execute all commit steps."""
-        for _ in commit_file_steps(Path(self.tempfile.name), self.filename):
-            pass
+    @abstractmethod
+    def commit_file(self) -> None:  # pragma: no cover
+        raise NotImplementedError()
 
     def __enter__(self) -> _TemporaryFileWrapper:  # type: ignore [type-arg]
         self.tempfile.__enter__()
@@ -69,3 +71,17 @@ class SandboxedFile:
             Path(self._orig_path).unlink(missing_ok=True)
 
         return False
+
+
+@dataclass
+class LocalFSSandbox(FileSandbox):
+    """Sandbox for editing files from a local filesystem."""
+
+    def stage_file(self) -> None:
+        shutil.copyfile(self.filename, self.tempfile.name)
+        shutil.copyfile(self.tempfile.name, self._orig_path)
+
+    def commit_file(self) -> None:
+        """Execute all commit steps."""
+        for _ in commit_file_steps(Path(self.tempfile.name), self.filename):
+            pass

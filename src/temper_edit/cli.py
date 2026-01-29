@@ -14,12 +14,12 @@ logger = getLogger(__name__)
 
 
 def main(filename: Path, editor_config: EditorConfig, tmpdir: Path | None) -> subprocess.CompletedProcess[bytes]:
-    from .atomic_edit import SandboxedFile
+    from .atomic_edit import LocalFSSandbox
     from .editor import select_editor
 
     editor = select_editor(editor_config)
 
-    sandbox = SandboxedFile(filename=filename, tmpdir=tmpdir)
+    sandbox = LocalFSSandbox(filename=filename, tmpdir=tmpdir)
     try:
         with sandbox as sandboxed_file:
             res = subprocess.run(editor + [sandboxed_file.name], capture_output=True)
