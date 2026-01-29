@@ -45,3 +45,32 @@ def test_user_with_elevated_privileges_update_root_owned_file(container: DockerC
         assert stat.group == (0, "root"), f"Wrong file group ownership for mode {octal}"
         assert stat.mode.endswith(octal), f"Mismatched permissions for mode {octal}"
         assert parse_output(container.exec(["cat", filename])) == content, f"Wrong file content for mode {octal}"
+
+
+def test_elevate_supports_multi_component_command(container: DockerContainer) -> None:
+    """Test that --elevate accepts a multi-component command like 'sudo --askpass'."""
+
+    script = textwrap.dedent(f"""\
+    #! /bin/sh
+    echo "$1" > "$2"
+    """)
+    container.exec(["sh", "-c", f"echo {shlex.quote(script)} > /tmp/edit-file"])
+    container.exec(["chown", "user:user", "/tmp/edit-file"])
+    container.exec(["chmod", "u+x", "/tmp/edit-file"])
+
+    filename = "/tmp/file.txt"
+    content = str(uuid.uuid4())
+    container.exec(["touch", filename])
+
+    _ = parse_output(
+        exec_as_user(
+            command=[
+                "sh",
+                "-c",
+                f'COVERAGE_FILE="/coverage/.coverage" EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} --elevate "sudo --askpass" {filename}',
+            ],
+            container=container,
+        )
+    )
+
+    assert parse_output(container.exec(["cat", filename])) == content, "Wrong file content"

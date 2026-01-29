@@ -73,6 +73,7 @@ def run() -> None:
     import argparse
     import json
     import os
+    import shlex
 
     from .config import ENVVARS
 
@@ -99,6 +100,6 @@ def run() -> None:
     sandbox_factory: SandboxFactory = (
         LocalFSSandbox  # type: ignore[assignment]
         if args.elevate is None
-        else partial(ElevatedPermissionSandbox, escalation_program=[args.elevate])
+        else partial(ElevatedPermissionSandbox, escalation_program=shlex.split(args.elevate))
     )
     main(filename=args.filename, editor_config=editor_config, tmpdir=args.tmpdir, sandbox_factory=sandbox_factory)

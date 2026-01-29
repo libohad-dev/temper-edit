@@ -114,6 +114,12 @@ temper-edit --elevate doas /etc/hosts
 ```
 or other alternative programs.
 
+The `--elevate` option supports multi-component commands with additional flags:
+
+```bash
+temper-edit --elevate "sudo --askpass" /etc/hosts
+```
+
 ### Exit Codes
 
 | Code | Meaning |
