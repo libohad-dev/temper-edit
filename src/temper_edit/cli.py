@@ -6,20 +6,30 @@ import subprocess
 import sys
 from logging import getLogger
 from pathlib import Path
+from typing import Protocol
 
+from .atomic_edit import FileSandbox, LocalFSSandbox
 from .config import EditorConfig
 from .utils import keep_keys
 
 logger = getLogger(__name__)
 
 
-def main(filename: Path, editor_config: EditorConfig, tmpdir: Path | None) -> subprocess.CompletedProcess[bytes]:
-    from .atomic_edit import LocalFSSandbox
+class SandboxFactory(Protocol):
+    def __call__(self, filename: Path, tmpdir: Path | None) -> FileSandbox: ...
+
+
+def main(
+    filename: Path,
+    editor_config: EditorConfig,
+    tmpdir: Path | None,
+    sandbox_factory: SandboxFactory,
+) -> subprocess.CompletedProcess[bytes]:
     from .editor import select_editor
 
     editor = select_editor(editor_config)
 
-    sandbox = LocalFSSandbox(filename=filename, tmpdir=tmpdir)
+    sandbox = sandbox_factory(filename=filename, tmpdir=tmpdir)
     try:
         with sandbox as sandboxed_file:
             res = subprocess.run(editor + [sandboxed_file.name], capture_output=True)
@@ -61,4 +71,5 @@ def run() -> None:
     logger.debug("Loaded environment variables", extra=dict(env_config=json.dumps(env_config)))
     editor_config = EditorConfig.from_env(env_config)
 
-    main(filename=args.filename, editor_config=editor_config, tmpdir=args.tmpdir)
+    sandbox_factory: SandboxFactory = LocalFSSandbox
+    main(filename=args.filename, editor_config=editor_config, tmpdir=args.tmpdir, sandbox_factory=sandbox_factory)
