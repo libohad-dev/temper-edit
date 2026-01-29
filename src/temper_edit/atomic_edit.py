@@ -4,6 +4,7 @@
 
 import filecmp
 import shutil
+import subprocess
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -28,7 +29,7 @@ def commit_file_steps(source: Path, target: Path) -> Iterator[str]:
     shutil.move(source, target)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class FileSandbox(ABC):
     """Abstract base class for sandboxed file editing."""
 
@@ -85,3 +86,24 @@ class LocalFSSandbox(FileSandbox):
         """Execute all commit steps."""
         for _ in commit_file_steps(Path(self.tempfile.name), self.filename):
             pass
+
+
+@dataclass
+class ElevatedPermissionSandbox(FileSandbox):
+    """Sandbox that uses privilege escalation for root-owned files."""
+
+    escalation_program: list[str]
+
+    def _run_privileged(self, args: list[str]) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.run(self.escalation_program + args, capture_output=True, check=True)
+
+    def stage_file(self) -> None:
+        result = self._run_privileged(["cat", "--", str(self.filename)])
+        Path(self.tempfile.name).write_bytes(result.stdout)
+        shutil.copyfile(self.tempfile.name, self._orig_path)
+
+    def commit_file(self) -> None:
+        Path(self.tempfile.name).chmod(0o000)
+        self._run_privileged(["chown", "--reference", str(self.filename), self.tempfile.name])
+        self._run_privileged(["chmod", "--reference", str(self.filename), self.tempfile.name])
+        self._run_privileged(["mv", "--force", "--", self.tempfile.name, str(self.filename)])

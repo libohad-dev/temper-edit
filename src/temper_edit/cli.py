@@ -4,11 +4,12 @@
 
 import subprocess
 import sys
+from functools import partial
 from logging import getLogger
 from pathlib import Path
 from typing import Protocol
 
-from .atomic_edit import FileSandbox, LocalFSSandbox
+from .atomic_edit import ElevatedPermissionSandbox, FileSandbox, LocalFSSandbox
 from .config import EditorConfig
 from .utils import keep_keys
 
@@ -63,6 +64,7 @@ def run() -> None:
     parser = argparse.ArgumentParser("Edit a file atomically")
     parser.add_argument("filename", type=Path, help="File to edit")
     parser.add_argument("--tmpdir", default=os.environ.get("TMPDIR"), type=Path, help="Directory for temporary files")
+    parser.add_argument("--elevate", help="Privilege escalation program to use (e.g., sudo, doas)")
 
     args = parser.parse_args()
 
@@ -71,5 +73,9 @@ def run() -> None:
     logger.debug("Loaded environment variables", extra=dict(env_config=json.dumps(env_config)))
     editor_config = EditorConfig.from_env(env_config)
 
-    sandbox_factory: SandboxFactory = LocalFSSandbox
+    sandbox_factory: SandboxFactory = (
+        LocalFSSandbox  # type: ignore[assignment]
+        if args.elevate is None
+        else partial(ElevatedPermissionSandbox, escalation_program=[args.elevate])
+    )
     main(filename=args.filename, editor_config=editor_config, tmpdir=args.tmpdir, sandbox_factory=sandbox_factory)

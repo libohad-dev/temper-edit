@@ -20,7 +20,7 @@ temper-edit is a command-line tool that performs atomic file editing through a t
 
 ### Highlights
 
-- **Privilege escalation protection**: Refuses to run when invoked via `sudo`, `doas`, or `pkexec`
+- **Privilege escalation protection**: Refuses to run when invoked via `sudo`, `doas`, or `pkexec` — use `--elevate` instead for editing privileged files
 - **Atomic updates**: Other processes watching the file see either the old or new content, never a partial write
 - **Secure replacement**: Uses a permission-controlled sequence to prevent race conditions and privilege attacks
 - **Failure recovery**: Preserves the temporary file on editor failure, allowing manual recovery
@@ -61,6 +61,7 @@ Edit a file using your configured editor. The original file is only updated if t
 |--------|-------------|
 | `filename` | Path to the file to edit (required) |
 | `--tmpdir <path>` | Directory for temporary files (optional) |
+| `--elevate <program>` | Privilege escalation program to use for editing root-owned files (e.g., `sudo`, `doas`) |
 
 ### Editor Selection
 
@@ -104,6 +105,14 @@ Edit with a specific temporary directory:
 ```bash
 temper-edit --tmpdir /secure/tmp /etc/myapp/config.yaml
 ```
+
+Edit a root-owned file (requires sudo/doas privileges):
+
+```bash
+temper-edit --elevate sudo /etc/hosts
+temper-edit --elevate doas /etc/hosts
+```
+or other alternative programs.
 
 ### Exit Codes
 
