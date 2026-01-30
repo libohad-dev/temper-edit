@@ -46,7 +46,7 @@ def elevated_commit_file_steps(source: Path, target: Path, run_privileged: Privi
     run_privileged(["mv", "--force", "--", str(source), str(target)])
 
 
-@dataclass(kw_only=True)
+@dataclass
 class FileSandbox(ABC):
     """Abstract base class for sandboxed file editing."""
 
@@ -91,7 +91,6 @@ class FileSandbox(ABC):
         return False
 
 
-@dataclass
 class LocalFSSandbox(FileSandbox):
     """Sandbox for editing files from a local filesystem."""
 
@@ -105,20 +104,20 @@ class LocalFSSandbox(FileSandbox):
             pass
 
 
-@dataclass
-class ElevatedPermissionSandbox(FileSandbox):
-    """Sandbox that uses privilege escalation for root-owned files."""
+def make_elevated_permissions_sandbox(escalation_program: list[str]) -> type[FileSandbox]:
+    class ElevatedPermissionSandbox(FileSandbox):
+        """Sandbox that uses privilege escalation for root-owned files."""
 
-    escalation_program: list[str]
+        def _run_privileged(self, args: list[str]) -> subprocess.CompletedProcess[bytes]:
+            return subprocess.run(escalation_program + args, capture_output=True, check=True)
 
-    def _run_privileged(self, args: list[str]) -> subprocess.CompletedProcess[bytes]:
-        return subprocess.run(self.escalation_program + args, capture_output=True, check=True)
+        def stage_file(self) -> None:
+            result = self._run_privileged(["cat", "--", str(self.filename)])
+            Path(self.tempfile.name).write_bytes(result.stdout)
+            shutil.copyfile(self.tempfile.name, self._orig_path)
 
-    def stage_file(self) -> None:
-        result = self._run_privileged(["cat", "--", str(self.filename)])
-        Path(self.tempfile.name).write_bytes(result.stdout)
-        shutil.copyfile(self.tempfile.name, self._orig_path)
+        def commit_file(self) -> None:
+            for _ in elevated_commit_file_steps(Path(self.tempfile.name), self.filename, self._run_privileged):
+                pass
 
-    def commit_file(self) -> None:
-        for _ in elevated_commit_file_steps(Path(self.tempfile.name), self.filename, self._run_privileged):
-            pass
+    return ElevatedPermissionSandbox

@@ -2,23 +2,19 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import argparse
+import shlex
 import subprocess
 import sys
 from collections.abc import Mapping
-from functools import partial
 from logging import getLogger
 from pathlib import Path
-from typing import Protocol
 
-from .atomic_edit import ElevatedPermissionSandbox, FileSandbox, LocalFSSandbox
+from .atomic_edit import FileSandbox, LocalFSSandbox, make_elevated_permissions_sandbox
 from .config import EditorConfig
 from .utils import keep_keys
 
 logger = getLogger(__name__)
-
-
-class SandboxFactory(Protocol):
-    def __call__(self, filename: Path, tmpdir: Path | None) -> FileSandbox: ...
 
 
 # Mapping of environment variables set by privilege escalation tools to their program names
@@ -46,7 +42,7 @@ def main(
     filename: Path,
     editor_config: EditorConfig,
     tmpdir: Path | None,
-    sandbox_factory: SandboxFactory,
+    sandbox_factory: type[FileSandbox],
 ) -> subprocess.CompletedProcess[bytes]:
     from .editor import select_editor
 
@@ -69,11 +65,16 @@ def main(
     return res
 
 
+def select_sandbox_implementation(args: argparse.Namespace) -> type[FileSandbox]:
+    if args.elevate is None:
+        return LocalFSSandbox
+    else:
+        return make_elevated_permissions_sandbox(escalation_program=shlex.split(args.elevate))
+
+
 def run() -> None:
-    import argparse
     import json
     import os
-    import shlex
 
     from .config import ENVVARS
 
@@ -89,7 +90,6 @@ def run() -> None:
     parser.add_argument("filename", type=Path, help="File to edit")
     parser.add_argument("--tmpdir", default=os.environ.get("TMPDIR"), type=Path, help="Directory for temporary files")
     parser.add_argument("--elevate", help="Privilege escalation program to use (e.g., sudo, doas)")
-
     args = parser.parse_args()
 
     logger.debug("Looking for relevant environment variables", extra=dict(envvars=sorted(ENVVARS)))
@@ -97,9 +97,11 @@ def run() -> None:
     logger.debug("Loaded environment variables", extra=dict(env_config=json.dumps(env_config)))
     editor_config = EditorConfig.from_env(env_config)
 
-    sandbox_factory: SandboxFactory = (
-        LocalFSSandbox  # type: ignore[assignment]
-        if args.elevate is None
-        else partial(ElevatedPermissionSandbox, escalation_program=shlex.split(args.elevate))
+    sandbox_factory = select_sandbox_implementation(args)
+
+    main(
+        filename=args.filename,
+        editor_config=editor_config,
+        tmpdir=args.tmpdir,
+        sandbox_factory=sandbox_factory,
     )
-    main(filename=args.filename, editor_config=editor_config, tmpdir=args.tmpdir, sandbox_factory=sandbox_factory)
