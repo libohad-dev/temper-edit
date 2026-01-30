@@ -135,6 +135,31 @@ temper-edit --elevate "sudo --askpass" /etc/hosts
 | 1 | Refused to run with escalated privileges, or editor not configured |
 | Non-zero | Editor failed (exit code propagated) |
 
+## Testing Philosophy
+
+### Full Coverage
+
+The test suite maintains 100% coverage of both lines and branches. This is enforced in CI and ensures that every code path is exercised. Full coverage is achievable and maintainable. Validation gaps tend to grow over time, so maintaining complete coverage prevents technical debt accumulation.
+
+### Behavior-Driven Tests
+
+Tests demonstrate actual behavior rather than implementation details. This includes verifying safety properties under anomalous conditions. For example:
+
+- **Atomicity**: The original file is never left in a partial state, even when the editor crashes mid-edit
+- **Permission preservation**: File ownership and mode bits survive the replacement sequence
+- **Failure recovery**: Temporary files are preserved when operations fail, allowing manual recovery
+- **Security**: The commit sequence prevents race conditions and privilege escalation attacks
+
+### Mock-Free Testing
+
+The test suite uses no mocks. Instead, it relies on:
+
+- **Testability by design**: Code architecture uses dependency injection and factory patterns, making components naturally testable without stubbing internals
+- **Containerized execution**: Tests run inside isolated containers across multiple Python versions, exercising real system calls, file operations, and privilege boundaries
+- **Real services**: For example, S3 tests use MinIO containers rather than mocked AWS clients, ensuring the code works against actual S3-compatible APIs
+
+This approach catches integration issues that mocks would hide and provides confidence that the code behaves correctly in production environments.
+
 ## Licensing
 
 This project is distributed under the terms of [GPL-3.0-or-later](https://spdx.org/licenses/GPL-3.0-or-later.html). In addition, it uses
