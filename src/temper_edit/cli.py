@@ -66,10 +66,14 @@ def main(
 
 
 def select_sandbox_implementation(args: argparse.Namespace) -> type[FileSandbox]:
-    if args.elevate is None:
-        return LocalFSSandbox
-    else:
+    if args.s3 is not None:
+        from temper_edit.s3 import make_s3_sandbox
+
+        return make_s3_sandbox(bucket=args.s3)
+    elif args.elevate is not None:
         return make_elevated_permissions_sandbox(escalation_program=shlex.split(args.elevate))
+    else:
+        return LocalFSSandbox
 
 
 def run() -> None:
@@ -89,7 +93,13 @@ def run() -> None:
     parser = argparse.ArgumentParser("Edit a file atomically")
     parser.add_argument("filename", type=Path, help="File to edit")
     parser.add_argument("--tmpdir", default=os.environ.get("TMPDIR"), type=Path, help="Directory for temporary files")
-    parser.add_argument("--elevate", help="Privilege escalation program to use (e.g., sudo, doas)")
+    sandbox_type = parser.add_mutually_exclusive_group(required=False)
+    sandbox_type.add_argument("--elevate", help="Privilege escalation program to use (e.g., sudo, doas)")
+    sandbox_type.add_argument(
+        "--s3",
+        metavar="BUCKET",
+        help="Treat filename as an S3 key in the specified bucket",
+    )
     args = parser.parse_args()
 
     logger.debug("Looking for relevant environment variables", extra=dict(envvars=sorted(ENVVARS)))

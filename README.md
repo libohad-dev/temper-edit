@@ -31,12 +31,18 @@ temper-edit is a command-line tool that performs atomic file editing through a t
 ### Requirements
 
 - Python 3.10 or later
-- No runtime dependencies
+- No runtime dependencies (S3 support requires optional `boto3` dependency)
 
 ### From Source
 
 ```bash
 pip install .
+```
+
+### With S3 Support
+
+```bash
+pip install ".[s3]"
 ```
 
 ### Development Installation
@@ -59,9 +65,10 @@ Edit a file using your configured editor. The original file is only updated if t
 
 | Option | Description |
 |--------|-------------|
-| `filename` | Path to the file to edit (required) |
+| `filename` | Path to the file to edit |
 | `--tmpdir <path>` | Directory for temporary files (optional) |
 | `--elevate <program>` | Privilege escalation program to use for editing root-owned files (e.g., `sudo`, `doas`) |
+| `--s3 <bucket>` | Treat filename as an S3 key in the specified bucket |
 
 ### Editor Selection
 

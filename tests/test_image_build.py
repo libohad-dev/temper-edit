@@ -5,5 +5,5 @@
 from testcontainers.core.image import DockerImage  # type: ignore[import-untyped]
 
 
-def test_image_build(image: DockerImage) -> None:
+def test_image_build(image: DockerImage, s3_image: DockerImage) -> None:
     pass

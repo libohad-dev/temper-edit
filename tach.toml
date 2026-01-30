@@ -48,12 +48,20 @@ path = "temper_edit.atomic_edit"
 depends_on = []
 
 [[modules]]
+path = "temper_edit.s3"
+depends_on = ["temper_edit.atomic_edit"]
+
+[[modules]]
 path = "temper_edit.cli"
 depends_on = [
     # keep-sorted start
     "temper_edit.atomic_edit",
     "temper_edit.config",
     "temper_edit.editor",
+    "temper_edit.s3",
     "temper_edit.utils",
     # keep-sorted end
 ]
+
+[external]
+exclude = ["boto3"]

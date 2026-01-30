@@ -36,6 +36,7 @@ repos:
   - id: mypy
     additional_dependencies:
     # keep-sorted start
+    - boto3-stubs[s3]>=1.26
     - pytest>=8.4.0,<9
     - testcontainers>=4.13,<5
     - types-docker>=7.1.0,<7.2

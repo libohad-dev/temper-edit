@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: 2026 Ohad Livne <libohad-dev@proton.me>
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Test container with S3 support (boto3 installed)
+ARG IMAGE_TAG
+FROM localhost/temper-edit-test:${IMAGE_TAG}
+
+RUN pip install --break-system-packages --no-cache-dir --root-user-action=ignore boto3
