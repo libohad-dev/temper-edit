@@ -70,7 +70,13 @@ class FileSandbox(ABC):
 
     def __enter__(self) -> _TemporaryFileWrapper:  # type: ignore [type-arg]
         self.tempfile.__enter__()
-        self.stage_file()
+        try:
+            self.stage_file()
+        except BaseException:
+            # Clean up the temp file if staging fails
+            self.tempfile.__exit__(None, None, None)
+            Path(self.tempfile.name).unlink(missing_ok=True)
+            raise
         shutil.copyfile(self.tempfile.name, self._orig_path)
         return self.tempfile
 
