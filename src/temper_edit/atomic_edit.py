@@ -71,6 +71,7 @@ class FileSandbox(ABC):
     def __enter__(self) -> _TemporaryFileWrapper:  # type: ignore [type-arg]
         self.tempfile.__enter__()
         self.stage_file()
+        shutil.copyfile(self.tempfile.name, self._orig_path)
         return self.tempfile
 
     def __exit__(
@@ -96,7 +97,6 @@ class LocalFSSandbox(FileSandbox):
 
     def stage_file(self) -> None:
         shutil.copyfile(self.filename, self.tempfile.name)
-        shutil.copyfile(self.tempfile.name, self._orig_path)
 
     def commit_file(self) -> None:
         """Execute all commit steps."""
@@ -114,7 +114,6 @@ def make_elevated_permissions_sandbox(escalation_program: list[str]) -> type[Fil
         def stage_file(self) -> None:
             result = self._run_privileged(["cat", "--", str(self.filename)])
             Path(self.tempfile.name).write_bytes(result.stdout)
-            shutil.copyfile(self.tempfile.name, self._orig_path)
 
         def commit_file(self) -> None:
             for _ in elevated_commit_file_steps(Path(self.tempfile.name), self.filename, self._run_privileged):
