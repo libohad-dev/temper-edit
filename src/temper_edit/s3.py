@@ -22,7 +22,10 @@ def make_s3_sandbox(bucket: str) -> type[FileSandbox]:
             self.s3_client = boto3.client("s3")
 
         def stage_file(self) -> None:
-            self.s3_client.download_file(Bucket=bucket, Key=str(self.filename), Filename=self.tempfile.name)
+            key = str(self.filename)
+            head_response = self.s3_client.head_object(Bucket=bucket, Key=key)
+            self.original_metadata: dict[str, str] = head_response.get("Metadata", {})
+            self.s3_client.download_file(Bucket=bucket, Key=key, Filename=self.tempfile.name)
 
         def commit_file(self) -> None:
             content = Path(self.tempfile.name).read_bytes()
@@ -31,6 +34,7 @@ def make_s3_sandbox(bucket: str) -> type[FileSandbox]:
                 "Bucket": bucket,
                 "Key": str(self.filename),
                 "Body": content,
+                "Metadata": self.original_metadata,
             }
 
             self.s3_client.put_object(**put_kwargs)

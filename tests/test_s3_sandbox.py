@@ -264,7 +264,7 @@ def test_successful_update(s3_container: DockerContainer, s3_bucket: str, s3_cli
     object_key = "successful-update-test.txt"
     original_content = b"original content"
     new_content = str(uuid.uuid4())
-    original_metadata = {"x-amz-meta-update-test": "will-be-lost", "x-amz-meta-important": "data"}
+    original_metadata = {"x-amz-meta-update-test": "preserved", "x-amz-meta-important": "data"}
 
     # Upload initial object with metadata
     s3_client.put_object(
@@ -297,8 +297,8 @@ def test_successful_update(s3_container: DockerContainer, s3_bucket: str, s3_cli
     response.close()
     response.release_conn()
 
-    # Verify metadata is cleared after update (current implementation does not preserve metadata)
-    assert get_custom_metadata(final_stat) == {}, "Object metadata should be cleared after update"
+    # Verify metadata is preserved after update
+    assert get_custom_metadata(final_stat) == original_metadata, "Object metadata should be preserved after update"
 
     # Verify no other changes to storage
     assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"
@@ -379,7 +379,7 @@ def test_successful_update_with_full_user_access(
     object_key = "policy-test.txt"
     original_content = b"original content"
     new_content = str(uuid.uuid4())
-    original_metadata = {"x-amz-meta-policy-test": "will-be-lost", "x-amz-meta-created-by": "admin"}
+    original_metadata = {"x-amz-meta-policy-test": "preserved", "x-amz-meta-created-by": "admin"}
 
     # Upload initial object with metadata using admin credentials
     s3_client.put_object(
@@ -446,8 +446,8 @@ def test_successful_update_with_full_user_access(
     response.close()
     response.release_conn()
 
-    # Verify metadata is cleared after update (current implementation does not preserve metadata)
-    assert get_custom_metadata(final_stat) == {}, "Object metadata should be cleared after update"
+    # Verify metadata is preserved after update
+    assert get_custom_metadata(final_stat) == original_metadata, "Object metadata should be preserved after update"
 
     # Verify no other changes to storage
     assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"

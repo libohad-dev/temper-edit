@@ -4,7 +4,7 @@
 
 [project]
 name = "temper-edit"
-version = "1.2.0"
+version = "1.2.1"
 description = "Perform atomic edit of files through a temporary copy"
 authors = [
   {name = "Ohad Livne", email = "libohad-dev@proton.me"}
