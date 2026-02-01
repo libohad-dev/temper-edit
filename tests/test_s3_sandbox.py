@@ -335,10 +335,8 @@ def test_successful_update(s3_container: DockerContainer, s3_bucket: str, s3_cli
     # Verify metadata is preserved after update
     assert get_custom_metadata(final_stat) == original_metadata, "Object metadata should be preserved after update"
 
-    # Verify content type is lost after update (current implementation does not preserve content type)
-    assert final_stat.content_type == "binary/octet-stream", (
-        "Object content type is overwritten to default after update"
-    )
+    # Verify content type is preserved after update
+    assert final_stat.content_type == original_content_type, "Object content type should be preserved after update"
 
     # Verify no other changes to storage
     assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"
@@ -506,10 +504,8 @@ def test_successful_update_with_full_user_access(
     # Verify metadata is preserved after update
     assert get_custom_metadata(final_stat) == original_metadata, "Object metadata should be preserved after update"
 
-    # Verify content type is lost after update (current implementation does not preserve content type)
-    assert final_stat.content_type == "binary/octet-stream", (
-        "Object content type is overwritten to default after update"
-    )
+    # Verify content type is preserved after update
+    assert final_stat.content_type == original_content_type, "Object content type should be preserved after update"
 
     # Verify no other changes to storage
     assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"

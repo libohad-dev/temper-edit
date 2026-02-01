@@ -25,6 +25,7 @@ def make_s3_sandbox(bucket: str) -> type[FileSandbox]:
             key = str(self.filename)
             head_response = self.s3_client.head_object(Bucket=bucket, Key=key)
             self.original_metadata: dict[str, str] = head_response.get("Metadata", {})
+            self.original_content_type: str | None = head_response.get("ContentType")
             self.s3_client.download_file(Bucket=bucket, Key=key, Filename=self.tempfile.name)
 
         def commit_file(self) -> None:
@@ -36,6 +37,14 @@ def make_s3_sandbox(bucket: str) -> type[FileSandbox]:
                 "Body": content,
                 "Metadata": self.original_metadata,
             }
+
+            # ContentType is optional per the S3 API spec, but in practice AWS and MinIO
+            # always set it in put_object() (defaulting to application/octet-stream). This
+            # guard handles hypothetical S3-compatible services that might omit it. See:
+            # https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html#API_HeadObject_ResponseSyntax
+            # https://github.com/minio/minio-py/blob/7.2.20/minio/api.py#L1915
+            if self.original_content_type is not None:  # pragma: no cover
+                put_kwargs["ContentType"] = self.original_content_type
 
             self.s3_client.put_object(**put_kwargs)
 
