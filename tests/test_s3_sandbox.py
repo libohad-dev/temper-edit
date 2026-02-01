@@ -52,10 +52,16 @@ def test_script_requires_boto(container: DockerContainer, s3_bucket: str, s3_cli
     original_content = b"original content"
     new_content = str(uuid.uuid4())
     original_metadata = {"x-amz-meta-test-key": "test-value", "x-amz-meta-author": "test-author"}
+    original_content_type = "text/plain"
 
-    # Upload initial object with metadata
+    # Upload initial object with metadata and content type
     s3_client.put_object(
-        s3_bucket, object_key, io.BytesIO(original_content), len(original_content), metadata=original_metadata
+        s3_bucket,
+        object_key,
+        io.BytesIO(original_content),
+        len(original_content),
+        metadata=original_metadata,
+        content_type=original_content_type,
     )
 
     # Get the initial ETag
@@ -91,6 +97,9 @@ def test_script_requires_boto(container: DockerContainer, s3_bucket: str, s3_cli
 
     # Verify metadata is preserved
     assert get_custom_metadata(final_stat) == original_metadata, "Object metadata should be unchanged"
+
+    # Verify content type is preserved
+    assert final_stat.content_type == original_content_type, "Object content type should be unchanged"
 
     # Verify no other changes to storage
     assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"
@@ -161,10 +170,16 @@ def test_unchanged_content(s3_container: DockerContainer, s3_bucket: str, s3_cli
     object_key = "unchanged-test.txt"
     original_content = b"original content"
     original_metadata = {"x-amz-meta-unchanged": "preserved", "x-amz-meta-version": "1"}
+    original_content_type = "text/plain"
 
-    # Upload initial object with metadata
+    # Upload initial object with metadata and content type
     s3_client.put_object(
-        s3_bucket, object_key, io.BytesIO(original_content), len(original_content), metadata=original_metadata
+        s3_bucket,
+        object_key,
+        io.BytesIO(original_content),
+        len(original_content),
+        metadata=original_metadata,
+        content_type=original_content_type,
     )
 
     # Get the initial ETag
@@ -194,6 +209,9 @@ def test_unchanged_content(s3_container: DockerContainer, s3_bucket: str, s3_cli
     # Verify metadata is preserved
     assert get_custom_metadata(final_stat) == original_metadata, "Object metadata should be unchanged"
 
+    # Verify content type is preserved
+    assert final_stat.content_type == original_content_type, "Object content type should be unchanged"
+
     # Verify no other changes to storage
     assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"
     assert [o.object_name for o in s3_client.list_objects(s3_bucket)] == [object_key], "No extra objects should exist"
@@ -213,10 +231,16 @@ def test_editor_failure(s3_container: DockerContainer, s3_bucket: str, s3_client
     object_key = "editor-failure-test.txt"
     original_content = b"original content before failure"
     original_metadata = {"x-amz-meta-failure-test": "should-remain", "x-amz-meta-status": "original"}
+    original_content_type = "text/plain"
 
-    # Upload initial object with metadata
+    # Upload initial object with metadata and content type
     s3_client.put_object(
-        s3_bucket, object_key, io.BytesIO(original_content), len(original_content), metadata=original_metadata
+        s3_bucket,
+        object_key,
+        io.BytesIO(original_content),
+        len(original_content),
+        metadata=original_metadata,
+        content_type=original_content_type,
     )
     initial_stat = s3_client.stat_object(s3_bucket, object_key)
     initial_etag = initial_stat.etag
@@ -253,6 +277,11 @@ def test_editor_failure(s3_container: DockerContainer, s3_bucket: str, s3_client
         "Object metadata should be unchanged after editor failure"
     )
 
+    # Verify content type is preserved
+    assert final_stat.content_type == original_content_type, (
+        "Object content type should be unchanged after editor failure"
+    )
+
     # Verify no other changes to storage
     assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"
     assert [o.object_name for o in s3_client.list_objects(s3_bucket)] == [object_key], "No extra objects should exist"
@@ -265,10 +294,16 @@ def test_successful_update(s3_container: DockerContainer, s3_bucket: str, s3_cli
     original_content = b"original content"
     new_content = str(uuid.uuid4())
     original_metadata = {"x-amz-meta-update-test": "preserved", "x-amz-meta-important": "data"}
+    original_content_type = "text/plain"
 
-    # Upload initial object with metadata
+    # Upload initial object with metadata and content type
     s3_client.put_object(
-        s3_bucket, object_key, io.BytesIO(original_content), len(original_content), metadata=original_metadata
+        s3_bucket,
+        object_key,
+        io.BytesIO(original_content),
+        len(original_content),
+        metadata=original_metadata,
+        content_type=original_content_type,
     )
     initial_stat = s3_client.stat_object(s3_bucket, object_key)
     initial_etag = initial_stat.etag
@@ -300,6 +335,11 @@ def test_successful_update(s3_container: DockerContainer, s3_bucket: str, s3_cli
     # Verify metadata is preserved after update
     assert get_custom_metadata(final_stat) == original_metadata, "Object metadata should be preserved after update"
 
+    # Verify content type is lost after update (current implementation does not preserve content type)
+    assert final_stat.content_type == "binary/octet-stream", (
+        "Object content type is overwritten to default after update"
+    )
+
     # Verify no other changes to storage
     assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"
     assert [o.object_name for o in s3_client.list_objects(s3_bucket)] == [object_key], "No extra objects should exist"
@@ -312,10 +352,16 @@ def test_script_fails_with_restricted_user_access(
     object_key = "restricted-object.txt"
     original_content = b"restricted content"
     original_metadata = {"x-amz-meta-access": "restricted", "x-amz-meta-owner": "admin"}
+    original_content_type = "text/plain"
     new_content = str(uuid.uuid4())
 
     s3_client.put_object(
-        s3_bucket, object_key, io.BytesIO(original_content), len(original_content), metadata=original_metadata
+        s3_bucket,
+        object_key,
+        io.BytesIO(original_content),
+        len(original_content),
+        metadata=original_metadata,
+        content_type=original_content_type,
     )
 
     # Get the initial ETag
@@ -366,6 +412,11 @@ def test_script_fails_with_restricted_user_access(
         "Object metadata should be unchanged with access restricted"
     )
 
+    # Verify content type is preserved
+    assert final_stat.content_type == original_content_type, (
+        "Object content type should be unchanged with access restricted"
+    )
+
     # Verify no other changes to storage
     assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"
     assert [o.object_name for o in s3_client.list_objects(s3_bucket)] == [object_key], "No extra objects should exist"
@@ -380,10 +431,16 @@ def test_successful_update_with_full_user_access(
     original_content = b"original content"
     new_content = str(uuid.uuid4())
     original_metadata = {"x-amz-meta-policy-test": "preserved", "x-amz-meta-created-by": "admin"}
+    original_content_type = "text/plain"
 
-    # Upload initial object with metadata using admin credentials
+    # Upload initial object with metadata and content type using admin credentials
     s3_client.put_object(
-        s3_bucket, object_key, io.BytesIO(original_content), len(original_content), metadata=original_metadata
+        s3_bucket,
+        object_key,
+        io.BytesIO(original_content),
+        len(original_content),
+        metadata=original_metadata,
+        content_type=original_content_type,
     )
     initial_stat = s3_client.stat_object(s3_bucket, object_key)
     initial_etag = initial_stat.etag
@@ -448,6 +505,11 @@ def test_successful_update_with_full_user_access(
 
     # Verify metadata is preserved after update
     assert get_custom_metadata(final_stat) == original_metadata, "Object metadata should be preserved after update"
+
+    # Verify content type is lost after update (current implementation does not preserve content type)
+    assert final_stat.content_type == "binary/octet-stream", (
+        "Object content type is overwritten to default after update"
+    )
 
     # Verify no other changes to storage
     assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"
