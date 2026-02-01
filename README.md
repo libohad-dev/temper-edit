@@ -135,6 +135,31 @@ temper-edit --elevate "sudo --askpass" /etc/hosts
 | 1 | Refused to run with escalated privileges, or editor not configured |
 | Non-zero | Editor failed (exit code propagated) |
 
+### S3 Editing
+
+Edit an S3 object:
+
+```bash
+temper-edit --s3 my-bucket path/to/object.txt
+```
+
+AWS credentials are read from the standard environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) or AWS configuration files.
+
+#### Metadata Preservation
+
+When editing S3 objects, the following attributes are preserved after a successful update:
+
+| Attribute | Preserved |
+|-----------|-----------|
+| Custom metadata (`x-amz-meta-*`) | Yes |
+| Content-Type | Yes |
+| Content-Encoding | No |
+| Content-Disposition | No |
+| Cache-Control | No |
+| Expires | No |
+
+Attributes not listed above (such as ETag, Last-Modified, and storage class) are managed by S3 and may change as part of the update.
+
 ## Testing Philosophy
 
 ### Full Coverage
