@@ -37,6 +37,7 @@ repos:
     additional_dependencies:
     # keep-sorted start
     - boto3-stubs[s3]>=1.26
+    - minio>=7.2.20,<7.3
     - pytest>=8.4.0,<9
     - testcontainers>=4.13,<5
     - types-docker>=7.1.0,<7.2
