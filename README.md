@@ -69,6 +69,7 @@ Edit a file using your configured editor. The original file is only updated if t
 | `--tmpdir <path>` | Directory for temporary files (optional) |
 | `--elevate <program>` | Privilege escalation program to use for editing root-owned files (e.g., `sudo`, `doas`) |
 | `--s3 <bucket>` | Treat filename as an S3 key in the specified bucket |
+| `--force` | Force overwrite even if the S3 object was modified concurrently |
 
 ### Editor Selection
 
@@ -159,6 +160,29 @@ When editing S3 objects, the following attributes are preserved after a successf
 | Expires | No |
 
 Attributes not listed above (such as ETag, Last-Modified, and storage class) are managed by S3 and may change as part of the update.
+
+#### Concurrent Modification Detection
+
+temper-edit uses S3 ETags to detect concurrent modifications. If the object is modified by another process after staging but before commit, the upload fails with an error:
+
+```
+Failed to update file: path/to/object.txt (concurrent modification detected). Temporary file preserved at: /tmp/tmpXXXXXX
+```
+
+This prevents silent data loss when multiple processes edit the same object. The temporary file containing your edits is preserved for manual recovery.
+
+To force an overwrite regardless of concurrent modifications:
+
+```bash
+temper-edit --s3 my-bucket --force path/to/object.txt
+```
+
+**Recovery workflow** when concurrent modification is detected:
+
+1. The error message shows the path to your preserved edits
+2. Re-download the current object to see what changed: `aws s3 cp s3://bucket/key current.txt`
+3. Manually merge your changes from the temp file
+4. Either re-run temper-edit or use `--force` if you're certain your version should win
 
 ## Testing Philosophy
 
