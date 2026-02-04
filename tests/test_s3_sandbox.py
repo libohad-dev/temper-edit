@@ -420,6 +420,108 @@ def test_script_fails_with_restricted_user_access(
     assert [o.object_name for o in s3_client.list_objects(s3_bucket)] == [object_key], "No extra objects should exist"
 
 
+def test_commit_fails_with_read_only_user_access(
+    s3_container: DockerContainer, s3_bucket: str, s3_client: Minio, minio: MinioContainer
+) -> None:
+    setup_editor(s3_container)
+    object_key = "readonly-object.txt"
+    original_content = b"readonly content"
+    original_metadata = {"x-amz-meta-access": "readonly", "x-amz-meta-owner": "admin"}
+    original_content_type = "text/plain"
+    new_content = str(uuid.uuid4())
+
+    s3_client.put_object(
+        s3_bucket,
+        object_key,
+        io.BytesIO(original_content),
+        len(original_content),
+        metadata=original_metadata,
+        content_type=original_content_type,
+    )
+
+    # Get the initial ETag
+    initial_stat = s3_client.stat_object(s3_bucket, object_key)
+    initial_etag = initial_stat.etag
+
+    # Create a user with read-only access (GetObject but NOT PutObject)
+    readonly_user = "readonlyuser"
+    readonly_pass = "readonlypass123"
+
+    # Set up mc alias pointing to local MinIO
+    minio.exec(["mc", "alias", "set", "local", "http://localhost:9000", minio.access_key, minio.secret_key])
+
+    # Create the user
+    minio.exec(["mc", "admin", "user", "add", "local", readonly_user, readonly_pass])
+
+    # Create a policy that allows GetObject but NOT PutObject
+    readonly_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": ["s3:GetObject"],
+                "Resource": [f"arn:aws:s3:::{s3_bucket}/{object_key}"],
+            }
+        ],
+    }
+    policy_name = "readonly-object-access"
+    minio.exec(
+        [
+            "sh",
+            "-c",
+            f"echo {shlex.quote(json.dumps(readonly_policy))} | mc admin policy create local {policy_name} /dev/stdin",
+        ]
+    )
+
+    # Attach the policy to the user
+    minio.exec(["mc", "admin", "policy", "attach", "local", policy_name, "--user", readonly_user])
+
+    # Run temper-edit with the read-only user's credentials - should fail on PutObject
+    with pytest.raises(
+        RuntimeError,
+        match=r"botocore\.errorfactory\.AccessDenied: An error occurred \(AccessDenied\) when calling the PutObject operation: Access Denied\.",
+    ) as exc_info:
+        parse_output(
+            s3_container.exec(
+                [
+                    "sh",
+                    "-c",
+                    f"AWS_ACCESS_KEY_ID={readonly_user} AWS_SECRET_ACCESS_KEY={readonly_pass} "
+                    f'EDITOR="/tmp/edit-file {new_content}" {TEMPER_EDIT_SHELL_COMMAND} --s3 {s3_bucket} {object_key}',
+                ]
+            )
+        )
+
+    # Verify temporary file was preserved with the edited content
+    tempfile = extract_preserved_temporary_filename(exc_info)
+    assert list_container_files(s3_container, "/tmp") == {"/tmp/edit-file", tempfile}
+    preserved_content = parse_output(s3_container.exec(["cat", tempfile]))
+    assert preserved_content == new_content, "Preserved temp file should contain the edited content"
+
+    # Verify the object wasn't modified
+    final_stat = s3_client.stat_object(s3_bucket, object_key)
+    assert final_stat.etag == initial_etag, "S3 object should not have been modified with write access denied"
+
+    response = s3_client.get_object(s3_bucket, object_key)
+    assert response.read() == original_content, "Object content should be unchanged"
+    response.close()
+    response.release_conn()
+
+    # Verify metadata is preserved
+    assert get_custom_metadata(final_stat) == original_metadata, (
+        "Object metadata should be unchanged with write access denied"
+    )
+
+    # Verify content type is preserved
+    assert final_stat.content_type == original_content_type, (
+        "Object content type should be unchanged with write access denied"
+    )
+
+    # Verify no other changes to storage
+    assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"
+    assert [o.object_name for o in s3_client.list_objects(s3_bucket)] == [object_key], "No extra objects should exist"
+
+
 def test_successful_update_with_full_user_access(
     s3_container: DockerContainer, s3_bucket: str, s3_client: Minio, minio: MinioContainer
 ) -> None:

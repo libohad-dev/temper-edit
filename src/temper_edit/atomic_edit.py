@@ -89,7 +89,10 @@ class FileSandbox(ABC):
             if exc_type is None:
                 content_changed = not filecmp.cmp(self.tempfile.name, self._orig_path, shallow=False)
                 if content_changed:
-                    self.commit_file()
+                    try:
+                        self.commit_file()
+                    except Exception as e:
+                        raise OSError("Commit failed") from e
                 else:
                     Path(self.tempfile.name).unlink()
         finally:
