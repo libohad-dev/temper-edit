@@ -40,6 +40,15 @@ def container_coverage_dir(request: pytest.FixtureRequest) -> Path | None:
     return None
 
 
+@pytest.fixture(scope="session")
+def cov_dir_mount(container_coverage_dir: Path | None) -> dict[str, Any]:
+    return (
+        {"tmpfs": {"/coverage": "size=1M,mode=1777"}}
+        if container_coverage_dir is None
+        else {"volumes": [(str(container_coverage_dir), "/coverage", "rw")]}
+    )
+
+
 @pytest.fixture(scope="session", params=PYTHON_TAGS)
 def base_image(request: pytest.FixtureRequest) -> Iterator[DockerImage]:
     image_tag: str = request.param
@@ -71,13 +80,7 @@ def image(base_image: DockerImage) -> Iterator[DockerImage]:
 
 
 @pytest.fixture
-def container(image: DockerImage, container_coverage_dir: Path | None) -> Iterator[DockerContainer]:
-    cov_dir_mount: dict[str, Any] = (
-        {"tmpfs": {"/coverage": "size=1M,mode=1777"}}
-        if container_coverage_dir is None
-        else {"volumes": [(str(container_coverage_dir), "/coverage", "rw")]}
-    )
-
+def container(image: DockerImage, cov_dir_mount: dict[str, Any]) -> Iterator[DockerContainer]:
     with DockerContainer(
         str(image),
         # keep-sorted start
@@ -136,14 +139,9 @@ def s3_container(
     s3_image: DockerImage,
     s3_network: Network,
     minio: MinioContainer,
-    container_coverage_dir: Path | None,
+    cov_dir_mount: dict[str, Any],
 ) -> Iterator[DockerContainer]:
     """Test container with network access to MinIO."""
-    cov_dir_mount: dict[str, Any] = (
-        {"tmpfs": {"/coverage": "size=1M,mode=1777"}}
-        if container_coverage_dir is None
-        else {"volumes": [(str(container_coverage_dir), "/coverage", "rw")]}
-    )
 
     with DockerContainer(
         str(s3_image),
