@@ -17,8 +17,8 @@ PYTHON_TAGS = [
     "3.10.19-alpine3.23",
     "3.11.14-alpine3.23",
     "3.12.12-alpine3.23",
-    "3.13.11-alpine3.23",
-    "3.14.2-alpine3.23",
+    "3.13.12-alpine3.23",
+    "3.14.3-alpine3.23",
     "3.15.0a5-alpine3.23",
     # keep-sorted end
 ]
