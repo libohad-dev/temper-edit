@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .atomic_edit import FileSandbox
+from .exceptions import ConcurrentModificationError
 
 try:
     import boto3
@@ -13,7 +14,12 @@ except ImportError as e:
     raise ImportError("S3 support requires boto3. Install with: pip install temper-edit[s3]") from e
 
 
-def make_s3_sandbox(bucket: str) -> type[FileSandbox]:
+# Note: S3 conditional writes (If-Match header) were added in November 2024.
+# See: https://aws.amazon.com/about-aws/whats-new/2024/11/amazon-s3-functionality-conditional-writes/
+# This allows atomic compare-and-swap without TOCTOU races.
+
+
+def make_s3_sandbox(bucket: str, force: bool = False) -> type[FileSandbox]:
     class S3Sandbox(FileSandbox):
         """Sandbox for editing files stored in AWS S3."""
 
@@ -26,9 +32,12 @@ def make_s3_sandbox(bucket: str) -> type[FileSandbox]:
             head_response = self.s3_client.head_object(Bucket=bucket, Key=key)
             self.original_metadata: dict[str, str] = head_response.get("Metadata", {})
             self.original_content_type: str | None = head_response.get("ContentType")
+            self.original_etag: str | None = head_response.get("ETag")
             self.s3_client.download_file(Bucket=bucket, Key=key, Filename=self.tempfile.name)
 
         def commit_file(self) -> None:
+            from botocore.exceptions import ClientError
+
             content = Path(self.tempfile.name).read_bytes()
 
             put_kwargs: dict[str, Any] = {
@@ -46,7 +55,21 @@ def make_s3_sandbox(bucket: str) -> type[FileSandbox]:
             if self.original_content_type is not None:  # pragma: no cover
                 put_kwargs["ContentType"] = self.original_content_type
 
-            self.s3_client.put_object(**put_kwargs)
+            # Use ETag for optimistic concurrency control unless --force is specified
+            if not force and self.original_etag is not None:
+                put_kwargs["IfMatch"] = self.original_etag
+
+            try:
+                self.s3_client.put_object(**put_kwargs)
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "")
+                # 412 PreconditionFailed: ETag mismatch
+                # 409 ConditionalRequestConflict: Race during upload (S3-specific)
+                if error_code in ("PreconditionFailed", "ConditionalRequestConflict", "412", "409"):
+                    raise ConcurrentModificationError(
+                        "Object was modified by another process (concurrent modification detected)"
+                    ) from e
+                raise
 
             # Clean up the tempfile after successful commit
             Path(self.tempfile.name).unlink()

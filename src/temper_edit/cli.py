@@ -69,7 +69,7 @@ def select_sandbox_implementation(args: argparse.Namespace) -> type[FileSandbox]
     if args.s3 is not None:
         from temper_edit.s3 import make_s3_sandbox
 
-        return make_s3_sandbox(bucket=args.s3)
+        return make_s3_sandbox(bucket=args.s3, force=args.force)
     elif args.elevate is not None:
         return make_elevated_permissions_sandbox(escalation_program=shlex.split(args.elevate))
     else:
@@ -99,6 +99,11 @@ def run() -> None:
         "--s3",
         metavar="BUCKET",
         help="Treat filename as an S3 key in the specified bucket",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force overwrite even if the object was modified (S3 only)",
     )
     args = parser.parse_args()
 

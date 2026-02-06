@@ -5,3 +5,9 @@
 
 class ConfigError(RuntimeError):
     pass
+
+
+class ConcurrentModificationError(OSError):
+    """Raised when an S3 object was modified after staging but before commit."""
+
+    pass

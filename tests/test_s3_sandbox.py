@@ -614,12 +614,13 @@ def test_successful_update_with_full_user_access(
     assert [o.object_name for o in s3_client.list_objects(s3_bucket)] == [object_key], "No extra objects should exist"
 
 
-def test_concurrent_modification_overwrites(s3_container: DockerContainer, s3_bucket: str, s3_client: Minio) -> None:
+def test_concurrent_modification_is_rejected(s3_container: DockerContainer, s3_bucket: str, s3_client: Minio) -> None:
     """
-    Demonstrate the current "last write wins" behavior.
+    Demonstrate that concurrent modifications are detected and rejected.
 
-    This test shows that when an object is modified externally after being staged
-    but before commit, the external changes are silently lost.
+    When an object is modified externally after being staged but before commit,
+    temper-edit should fail with a concurrent modification error, preserving
+    the external changes and the temp file for manual recovery.
     """
     object_key = "concurrent-modification-test.txt"
     external_content = str(uuid.uuid4())
@@ -651,13 +652,93 @@ def test_concurrent_modification_overwrites(s3_container: DockerContainer, s3_bu
     initial_stat = s3_client.stat_object(s3_bucket, object_key)
     initial_etag = initial_stat.etag
 
-    # Run temper-edit
+    # Run temper-edit - should fail with concurrent modification error
+    with pytest.raises(RuntimeError, match=r"Failed to update file:.*concurrent modification") as exc_info:
+        parse_output(
+            s3_container.exec(
+                [
+                    "sh",
+                    "-c",
+                    f'EDITOR="/tmp/concurrent-editor {edit_content}" {TEMPER_EDIT_SHELL_COMMAND} --s3 {s3_bucket} {object_key}',
+                ]
+            )
+        )
+
+    # Verify temporary file was preserved with the edited content
+    tempfile = extract_preserved_temporary_filename(exc_info)
+    assert list_container_files(s3_container, "/tmp") == {"/tmp/concurrent-editor", tempfile}
+    preserved_content = parse_output(s3_container.exec(["cat", tempfile]))
+    assert preserved_content == edit_content, "Preserved temp file should contain the edited content"
+
+    # Verify the object was updated
+    final_stat = s3_client.stat_object(s3_bucket, object_key)
+    assert final_stat.etag != initial_etag, "S3 object ETag should have changed after the external update"
+
+    # Object contains external_content, edit_content should be rejected
+    response = s3_client.get_object(s3_bucket, object_key)
+    assert response.read() == external_content.encode()
+    response.close()
+    response.release_conn()
+
+    # Verify metadata is lost after the external update
+    assert get_custom_metadata(final_stat) == {}, "Metadata should have been overwritten by the external update"
+
+    # Verify content type is preserved after update
+    assert final_stat.content_type == "binary/octet-stream", (
+        "Content type should have been overwritten by the external update"
+    )
+
+    # Verify no other changes to storage
+    assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"
+    assert [o.object_name for o in s3_client.list_objects(s3_bucket)] == [object_key], "No extra objects should exist"
+
+
+def test_concurrent_modification_with_force_succeeds(
+    s3_container: DockerContainer, s3_bucket: str, s3_client: Minio
+) -> None:
+    """
+    Test that --force bypasses concurrent modification detection.
+
+    When using --force, the upload proceeds even if the object was modified
+    externally, implementing "last write wins" behavior.
+    """
+    object_key = "concurrent-force-test.txt"
+    external_content = str(uuid.uuid4())
+    edit_content = str(uuid.uuid4())
+
+    # Editor that simulates an external modification
+    script = textwrap.dedent(f"""\
+    #! /bin/sh
+    python -c "import boto3; boto3.client('s3').put_object(Bucket='{s3_bucket}', Key='{object_key}', Body=b'{external_content}')"
+    # Write content C to the temp file
+    echo "$1" > "$2"
+    """)
+
+    s3_container.exec(["sh", "-c", f"echo {shlex.quote(script)} > /tmp/concurrent-editor"])
+    s3_container.exec(["chmod", "u+x", "/tmp/concurrent-editor"])
+
+    original_content = b"original content"
+    original_metadata = {"x-amz-meta-force-test": "preserved", "x-amz-meta-version": "1"}
+    original_content_type = "text/plain"
+
+    s3_client.put_object(
+        s3_bucket,
+        object_key,
+        io.BytesIO(original_content),
+        len(original_content),
+        metadata=original_metadata,
+        content_type=original_content_type,
+    )
+    initial_stat = s3_client.stat_object(s3_bucket, object_key)
+    initial_etag = initial_stat.etag
+
+    # Run temper-edit with --force - should succeed despite concurrent modification
     parse_output(
         s3_container.exec(
             [
                 "sh",
                 "-c",
-                f'EDITOR="/tmp/concurrent-editor {edit_content}" {TEMPER_EDIT_SHELL_COMMAND} --s3 {s3_bucket} {object_key}',
+                f'EDITOR="/tmp/concurrent-editor {edit_content}" {TEMPER_EDIT_SHELL_COMMAND} --s3 {s3_bucket} --force {object_key}',
             ]
         )
     )
@@ -667,9 +748,8 @@ def test_concurrent_modification_overwrites(s3_container: DockerContainer, s3_bu
 
     # Verify the object was updated
     final_stat = s3_client.stat_object(s3_bucket, object_key)
-    assert final_stat.etag != initial_etag, "S3 object ETag should have changed after successful update"
-
-    # Object contains edit_content, external_content is lost
+    assert final_stat.etag != initial_etag, "S3 object ETag should have changed after the external update"
+    # With --force, object contains our edit, while the external modification is overwritten
     response = s3_client.get_object(s3_bucket, object_key)
     assert response.read() == f"{edit_content}\n".encode(), "S3 object should contain the edit content"
     response.close()
