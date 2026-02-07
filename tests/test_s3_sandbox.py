@@ -17,6 +17,8 @@ from testcontainers.minio import Minio, MinioContainer  # type: ignore[import-un
 
 from tests.utils import (
     TEMPER_EDIT_SHELL_COMMAND,
+    check_exception_content,
+    extract_log_filename,
     extract_preserved_temporary_filename,
     list_container_files,
     parse_output,
@@ -70,8 +72,8 @@ def test_script_requires_boto(container: DockerContainer, s3_bucket: str, s3_cli
 
     with pytest.raises(
         RuntimeError,
-        match=r"ImportError: S3 support requires boto3. Install with: pip install temper-edit\[s3\]",
-    ):
+        check=check_exception_content("S3 support requires boto3. Install with: pip install temper-edit[s3]"),
+    ) as exc_info:
         parse_output(
             container.exec(
                 [
@@ -81,6 +83,8 @@ def test_script_requires_boto(container: DockerContainer, s3_bucket: str, s3_cli
                 ]
             )
         )
+
+    assert exc_info.value.args[1] == 12
 
     # Verify temporary files were cleaned up
     assert list_container_files(container, "/tmp") == {"/tmp/edit-file"}
@@ -112,8 +116,8 @@ def test_script_fails_with_missing_object(s3_container: DockerContainer, s3_buck
 
     with pytest.raises(
         RuntimeError,
-        match=r"botocore\.exceptions\.ClientError: An error occurred \(404\) when calling the HeadObject operation: Not Found",
-    ):
+        check=check_exception_content("S3 object not found: s3://test-bucket/nonexistent-object.txt\n"),
+    ) as exc_info:
         parse_output(
             s3_container.exec(
                 [
@@ -124,8 +128,13 @@ def test_script_fails_with_missing_object(s3_container: DockerContainer, s3_buck
             )
         )
 
-    # Verify no temporary files were left behind (error occurs before temp file creation)
-    assert list_container_files(s3_container, "/tmp") == {"/tmp/edit-file"}
+    assert exc_info.value.args[1] == 21
+
+    # Staging errors clean up the tempfile, but a log file is still written
+    log_file = extract_log_filename(exc_info)
+    log_content = parse_output(s3_container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
+    assert list_container_files(s3_container, "/tmp") == {"/tmp/edit-file", log_file}
 
     # Verify the script did not modify the storage content
     assert [b.name for b in s3_client.list_buckets()] == [s3_bucket], "No extra buckets should have been created"
@@ -139,8 +148,8 @@ def test_script_fails_with_missing_bucket(s3_container: DockerContainer, s3_clie
 
     with pytest.raises(
         RuntimeError,
-        match=r"botocore\.exceptions\.ClientError: An error occurred \(404\) when calling the HeadObject operation: Not Found",
-    ):
+        check=check_exception_content("S3 object not found: s3://nonexistent-bucket/some-object.txt\n"),
+    ) as exc_info:
         parse_output(
             s3_container.exec(
                 [
@@ -151,8 +160,13 @@ def test_script_fails_with_missing_bucket(s3_container: DockerContainer, s3_clie
             )
         )
 
-    # Verify no temporary files were left behind (error occurs before temp file creation)
-    assert list_container_files(s3_container, "/tmp") == {"/tmp/edit-file"}
+    assert exc_info.value.args[1] == 21
+
+    # Staging errors clean up the tempfile, but a log file is still written
+    log_file = extract_log_filename(exc_info)
+    log_content = parse_output(s3_container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
+    assert list_container_files(s3_container, "/tmp") == {"/tmp/edit-file", log_file}
 
     # Verify the script did not modify the storage content
     assert list(s3_client.list_buckets()) == [], "No buckets should have been created"
@@ -246,7 +260,7 @@ def test_editor_failure(s3_container: DockerContainer, s3_bucket: str, s3_client
     initial_etag = initial_stat.etag
 
     # Run temper-edit with failing editor
-    with pytest.raises(RuntimeError, match="Editor failed. Temporary file preserved at:") as exc_info:
+    with pytest.raises(RuntimeError, check=check_exception_content("Editor failed with exit code 1")) as exc_info:
         parse_output(
             s3_container.exec(
                 [
@@ -257,11 +271,18 @@ def test_editor_failure(s3_container: DockerContainer, s3_bucket: str, s3_client
             )
         )
 
+    assert exc_info.value.args[1] == 30
+
     # Verify temporary file was preserved with the edited content
     tempfile = extract_preserved_temporary_filename(exc_info)
-    assert list_container_files(s3_container, "/tmp") == {"/tmp/failing-editor", tempfile}
+    log_file = extract_log_filename(exc_info)
+    assert list_container_files(s3_container, "/tmp") == {"/tmp/failing-editor", tempfile, log_file}
     preserved_content = parse_output(s3_container.exec(["cat", tempfile]))
     assert preserved_content == new_content, "Preserved temp file should contain the edited content"
+
+    # Verify log file contains traceback
+    log_content = parse_output(s3_container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
 
     # Verify the S3 object wasn't modified
     final_stat = s3_client.stat_object(s3_bucket, object_key)
@@ -380,8 +401,8 @@ def test_script_fails_with_restricted_user_access(
     # Run temper-edit with the restricted user's credentials
     with pytest.raises(
         RuntimeError,
-        match=r"botocore\.exceptions\.ClientError: An error occurred \(403\) when calling the HeadObject operation: Forbidden",
-    ):
+        check=check_exception_content("Access denied: s3://test-bucket/restricted-object.txt\n"),
+    ) as exc_info:
         parse_output(
             s3_container.exec(
                 [
@@ -393,8 +414,13 @@ def test_script_fails_with_restricted_user_access(
             )
         )
 
-    # Verify no temporary files were left behind (error occurs before temp file creation)
-    assert list_container_files(s3_container, "/tmp") == {"/tmp/edit-file"}
+    assert exc_info.value.args[1] == 22
+
+    # Staging errors clean up the tempfile, but a log file is still written
+    log_file = extract_log_filename(exc_info)
+    log_content = parse_output(s3_container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
+    assert list_container_files(s3_container, "/tmp") == {"/tmp/edit-file", log_file}
 
     # Verify the object wasn't modified
     final_stat = s3_client.stat_object(s3_bucket, object_key)
@@ -479,7 +505,7 @@ def test_commit_fails_with_read_only_user_access(
     # Run temper-edit with the read-only user's credentials - should fail on PutObject
     with pytest.raises(
         RuntimeError,
-        match=r"botocore\.errorfactory\.AccessDenied: An error occurred \(AccessDenied\) when calling the PutObject operation: Access Denied\.",
+        check=check_exception_content("Access denied while committing: s3://test-bucket/readonly-object.txt\n"),
     ) as exc_info:
         parse_output(
             s3_container.exec(
@@ -492,11 +518,18 @@ def test_commit_fails_with_read_only_user_access(
             )
         )
 
+    assert exc_info.value.args[1] == 41
+
     # Verify temporary file was preserved with the edited content
     tempfile = extract_preserved_temporary_filename(exc_info)
-    assert list_container_files(s3_container, "/tmp") == {"/tmp/edit-file", tempfile}
+    log_file = extract_log_filename(exc_info)
+    assert list_container_files(s3_container, "/tmp") == {"/tmp/edit-file", tempfile, log_file}
     preserved_content = parse_output(s3_container.exec(["cat", tempfile]))
     assert preserved_content == new_content, "Preserved temp file should contain the edited content"
+
+    # Verify log file contains traceback
+    log_content = parse_output(s3_container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
 
     # Verify the object wasn't modified
     final_stat = s3_client.stat_object(s3_bucket, object_key)
@@ -653,7 +686,10 @@ def test_concurrent_modification_is_rejected(s3_container: DockerContainer, s3_b
     initial_etag = initial_stat.etag
 
     # Run temper-edit - should fail with concurrent modification error
-    with pytest.raises(RuntimeError, match=r"Failed to update file:.*concurrent modification") as exc_info:
+    with pytest.raises(
+        RuntimeError,
+        check=check_exception_content("Object was modified by another process (concurrent modification detected)"),
+    ) as exc_info:
         parse_output(
             s3_container.exec(
                 [
@@ -664,11 +700,18 @@ def test_concurrent_modification_is_rejected(s3_container: DockerContainer, s3_b
             )
         )
 
+    assert exc_info.value.args[1] == 42
+
     # Verify temporary file was preserved with the edited content
     tempfile = extract_preserved_temporary_filename(exc_info)
-    assert list_container_files(s3_container, "/tmp") == {"/tmp/concurrent-editor", tempfile}
+    log_file = extract_log_filename(exc_info)
+    assert list_container_files(s3_container, "/tmp") == {"/tmp/concurrent-editor", tempfile, log_file}
     preserved_content = parse_output(s3_container.exec(["cat", tempfile]))
     assert preserved_content == edit_content, "Preserved temp file should contain the edited content"
+
+    # Verify log file contains traceback
+    log_content = parse_output(s3_container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
 
     # Verify the object was updated
     final_stat = s3_client.stat_object(s3_bucket, object_key)

@@ -10,6 +10,8 @@ from tests.utils import (
     TEMPER_EDIT_SHELL_COMMAND,
     check_exception_content,
     exec_as_user,
+    extract_log_filename,
+    list_container_files,
     parse_output,
 )
 
@@ -25,23 +27,43 @@ def test_script_fails_with_multiple_argument(container: DockerContainer) -> None
 
 
 def test_script_fails_with_no_editor_configured(container: DockerContainer) -> None:
-    with pytest.raises(RuntimeError, match="No editor configured"):
+    with pytest.raises(RuntimeError, match="No editor configured") as exc_info:
         _ = parse_output(container.exec(TEMPER_EDIT_COMMAND + ["foo"]))
+
+    assert exc_info.value.args[1] == 10
+
+    # Verify no temporary files or log files were created
+    assert list_container_files(container, "/tmp") == set()
 
 
 def test_script_fails_with_invalid_editor(container: DockerContainer) -> None:
-    with pytest.raises(RuntimeError, check=check_exception_content("No such file or directory: 'missing-editor'")):
+    with pytest.raises(RuntimeError, check=check_exception_content("Editor not found: missing-editor")) as exc_info:
         _ = parse_output(container.exec(["sh", "-c", f"EDITOR=missing-editor {TEMPER_EDIT_SHELL_COMMAND} /etc/motd"]))
+
+    assert exc_info.value.args[1] == 30
+
+    # Verify log file was written
+    log_file = extract_log_filename(exc_info)
+    log_content = parse_output(container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
 
 
 def test_script_fails_with_missing_file(container: DockerContainer) -> None:
-    with pytest.raises(RuntimeError, check=check_exception_content("No such file or directory: '/foo/bar'")):
+    with pytest.raises(RuntimeError, check=check_exception_content("File not found: /foo/bar")) as exc_info:
         _ = parse_output(container.exec(["sh", "-c", f"EDITOR=/bin/cat {TEMPER_EDIT_SHELL_COMMAND} /foo/bar"]))
+
+    assert exc_info.value.args[1] == 21
+
+    # Staging errors clean up the tempfile, but a log file is still written
+    log_file = extract_log_filename(exc_info)
+    log_content = parse_output(container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
+    assert list_container_files(container, "/tmp") == {log_file}
 
 
 @pytest.mark.parametrize("escalation_tool", ["sudo", "doas"])
 def test_script_fails_when_run_with_escalated_privileges(container: DockerContainer, escalation_tool: str) -> None:
-    with pytest.raises(RuntimeError, match=f"Refusing to run under {escalation_tool}"):
+    with pytest.raises(RuntimeError, match=f"Refusing to run under {escalation_tool}") as exc_info:
         _ = parse_output(
             exec_as_user(
                 command=[
@@ -53,3 +75,5 @@ def test_script_fails_when_run_with_escalated_privileges(container: DockerContai
                 container=container,
             )
         )
+
+    assert exc_info.value.args[1] == 11

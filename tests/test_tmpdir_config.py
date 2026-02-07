@@ -11,7 +11,9 @@ from testcontainers.core.container import DockerContainer  # type: ignore[import
 
 from tests.utils import (
     TEMPER_EDIT_SHELL_COMMAND,
+    check_exception_content,
     exec_as_user,
+    extract_log_filename,
     extract_preserved_temporary_filename,
     list_container_files,
     parse_output,
@@ -35,7 +37,7 @@ def test_tmpdir_envvar_is_respected(container: DockerContainer) -> None:
     container.exec(["mkdir", "-p", custom_tmpdir])
 
     content = str(uuid.uuid4())
-    with pytest.raises(RuntimeError, match="Editor failed. Temporary file preserved at:") as exc_info:
+    with pytest.raises(RuntimeError, check=check_exception_content("Editor failed with exit code 1")) as exc_info:
         _ = parse_output(
             container.exec(
                 [
@@ -46,15 +48,22 @@ def test_tmpdir_envvar_is_respected(container: DockerContainer) -> None:
             )
         )
 
+    assert exc_info.value.args[1] == 30
+
     # Verify temporary file was created in the custom tmpdir, preserved, and contains the expected content
     tempfile = extract_preserved_temporary_filename(exc_info)
+    log_file = extract_log_filename(exc_info)
     assert list_container_files(container=container, directory="/tmp") == {
         "/tmp/file.txt",
         "/tmp/edit-file",
         custom_tmpdir,
     }
-    assert list_container_files(container=container, directory=custom_tmpdir) == {tempfile}
+    assert list_container_files(container=container, directory=custom_tmpdir) == {tempfile, log_file}
     assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
+
+    # Verify log file contains traceback
+    log_content = parse_output(container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
 
 
 def test_envvar_tmpdir_must_exist(container: DockerContainer) -> None:
@@ -73,8 +82,8 @@ def test_envvar_tmpdir_must_exist(container: DockerContainer) -> None:
     content = str(uuid.uuid4())
     with pytest.raises(
         RuntimeError,
-        match=r"FileNotFoundError: \[Errno 2\] No such file or directory: \\'/tmp/does-not-exist/",
-    ):
+        check=check_exception_content("Temporary directory does not exist: /tmp/does-not-exist\n"),
+    ) as exc_info:
         _ = parse_output(
             container.exec(
                 [
@@ -84,6 +93,8 @@ def test_envvar_tmpdir_must_exist(container: DockerContainer) -> None:
                 ]
             )
         )
+
+    assert exc_info.value.args[1] == 10
 
     # Verify no temporary file was created
     assert list_container_files(container=container, directory="/tmp") == {"/tmp/file.txt", "/tmp/edit-file"}
@@ -106,7 +117,10 @@ def test_envvar_tmpdir_must_be_writable(container: DockerContainer) -> None:
     container.exec(["mkdir", "-p", custom_tmpdir])
 
     content = str(uuid.uuid4())
-    with pytest.raises(RuntimeError, match=r"PermissionError: \[Errno 13\] Permission denied: \\'/tmp/custom-tmpdir/"):
+    with pytest.raises(
+        RuntimeError,
+        check=check_exception_content("Temporary directory is not writable: /tmp/custom-tmpdir\n"),
+    ) as exc_info:
         _ = parse_output(
             exec_as_user(
                 command=[
@@ -117,6 +131,8 @@ def test_envvar_tmpdir_must_be_writable(container: DockerContainer) -> None:
                 container=container,
             )
         )
+
+    assert exc_info.value.args[1] == 10
 
     # Verify no temporary file was created
     assert list_container_files(container=container, directory="/tmp") == {
@@ -144,7 +160,7 @@ def test_tmpdir_cli_argument(container: DockerContainer) -> None:
     container.exec(["mkdir", "-p", custom_tmpdir])
 
     content = str(uuid.uuid4())
-    with pytest.raises(RuntimeError, match="Editor failed. Temporary file preserved at:") as exc_info:
+    with pytest.raises(RuntimeError, check=check_exception_content("Editor failed with exit code 1")) as exc_info:
         _ = parse_output(
             container.exec(
                 [
@@ -155,15 +171,22 @@ def test_tmpdir_cli_argument(container: DockerContainer) -> None:
             )
         )
 
+    assert exc_info.value.args[1] == 30
+
     # Verify temporary file was created in the custom tmpdir, preserved, and contains the expected content
     tempfile = extract_preserved_temporary_filename(exc_info)
+    log_file = extract_log_filename(exc_info)
     assert list_container_files(container=container, directory="/tmp") == {
         "/tmp/file.txt",
         "/tmp/edit-file",
         custom_tmpdir,
     }
-    assert list_container_files(container=container, directory=custom_tmpdir) == {tempfile}
+    assert list_container_files(container=container, directory=custom_tmpdir) == {tempfile, log_file}
     assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
+
+    # Verify log file contains traceback
+    log_content = parse_output(container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
 
 
 def test_cli_tmpdir_must_exist(container: DockerContainer) -> None:
@@ -182,8 +205,8 @@ def test_cli_tmpdir_must_exist(container: DockerContainer) -> None:
     content = str(uuid.uuid4())
     with pytest.raises(
         RuntimeError,
-        match=r"FileNotFoundError: \[Errno 2\] No such file or directory: \\'/tmp/does-not-exist/",
-    ):
+        check=check_exception_content("Temporary directory does not exist: /tmp/does-not-exist\n"),
+    ) as exc_info:
         _ = parse_output(
             container.exec(
                 [
@@ -193,6 +216,8 @@ def test_cli_tmpdir_must_exist(container: DockerContainer) -> None:
                 ]
             )
         )
+
+    assert exc_info.value.args[1] == 10
 
     # Verify no temporary file was created
     assert list_container_files(container=container, directory="/tmp") == {"/tmp/file.txt", "/tmp/edit-file"}
@@ -215,7 +240,10 @@ def test_cli_tmpdir_must_be_writable(container: DockerContainer) -> None:
     container.exec(["mkdir", "-p", custom_tmpdir])
 
     content = str(uuid.uuid4())
-    with pytest.raises(RuntimeError, match=r"PermissionError: \[Errno 13\] Permission denied: \\'/tmp/custom-tmpdir/"):
+    with pytest.raises(
+        RuntimeError,
+        check=check_exception_content("Temporary directory is not writable: /tmp/custom-tmpdir\n"),
+    ) as exc_info:
         _ = parse_output(
             exec_as_user(
                 command=[
@@ -226,6 +254,8 @@ def test_cli_tmpdir_must_be_writable(container: DockerContainer) -> None:
                 container=container,
             )
         )
+
+    assert exc_info.value.args[1] == 10
 
     # Verify no temporary file was created
     assert list_container_files(container=container, directory="/tmp") == {
@@ -255,7 +285,7 @@ def test_cli_tmpdir_has_higher_priority_than_envvar(container: DockerContainer) 
     container.exec(["mkdir", "-p", envvar_tmpdir])
 
     content = str(uuid.uuid4())
-    with pytest.raises(RuntimeError, match="Editor failed. Temporary file preserved at:") as exc_info:
+    with pytest.raises(RuntimeError, check=check_exception_content("Editor failed with exit code 1")) as exc_info:
         _ = parse_output(
             container.exec(
                 [
@@ -266,14 +296,21 @@ def test_cli_tmpdir_has_higher_priority_than_envvar(container: DockerContainer) 
             )
         )
 
+    assert exc_info.value.args[1] == 30
+
     # Verify temporary file was created in the CLI custom tmpdir, preserved, and contains the expected content
     tempfile = extract_preserved_temporary_filename(exc_info)
+    log_file = extract_log_filename(exc_info)
     assert list_container_files(container=container, directory="/tmp") == {
         "/tmp/file.txt",
         "/tmp/edit-file",
         cli_tmpdir,
         envvar_tmpdir,
     }
-    assert list_container_files(container=container, directory=cli_tmpdir) == {tempfile}
+    assert list_container_files(container=container, directory=cli_tmpdir) == {tempfile, log_file}
     assert list_container_files(container=container, directory=envvar_tmpdir) == set()
     assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
+
+    # Verify log file contains traceback
+    log_content = parse_output(container.exec(["cat", log_file]))
+    assert "Traceback" in log_content

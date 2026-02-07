@@ -13,6 +13,15 @@ from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from types import TracebackType
 from typing import Literal
 
+from .exceptions import (
+    CommitError,
+    CommitPermissionError,
+    ConfigError,
+    StagingError,
+    StagingFileNotFoundError,
+    StagingPermissionError,
+)
+
 PrivilegedRunner = Callable[[list[str]], subprocess.CompletedProcess[bytes]]
 
 
@@ -54,7 +63,12 @@ class FileSandbox(ABC):
     tmpdir: Path | None = None
 
     def __post_init__(self) -> None:
-        self.tempfile = NamedTemporaryFile(dir=self.tmpdir, delete=False)  # noqa: SIM115
+        try:
+            self.tempfile = NamedTemporaryFile(dir=self.tmpdir, delete=False)  # noqa: SIM115
+        except FileNotFoundError as e:
+            raise ConfigError(f"Temporary directory does not exist: {self.tmpdir}") from e
+        except PermissionError as e:
+            raise ConfigError(f"Temporary directory is not writable: {self.tmpdir}") from e
 
     @property
     def _orig_path(self) -> str:
@@ -89,10 +103,7 @@ class FileSandbox(ABC):
             if exc_type is None:
                 content_changed = not filecmp.cmp(self.tempfile.name, self._orig_path, shallow=False)
                 if content_changed:
-                    try:
-                        self.commit_file()
-                    except Exception as e:
-                        raise OSError("Commit failed") from e
+                    self.commit_file()
                 else:
                     Path(self.tempfile.name).unlink()
         finally:
@@ -105,12 +116,24 @@ class LocalFSSandbox(FileSandbox):
     """Sandbox for editing files from a local filesystem."""
 
     def stage_file(self) -> None:
-        shutil.copyfile(self.filename, self.tempfile.name)
+        try:
+            shutil.copyfile(self.filename, self.tempfile.name)
+        except FileNotFoundError as e:
+            raise StagingFileNotFoundError(f"File not found: {self.filename}") from e
+        except PermissionError as e:
+            raise StagingPermissionError(f"Permission denied: {self.filename}") from e
+        except Exception as e:  # pragma: no cover
+            raise StagingError(f"Failed to stage file: {self.filename}") from e
 
     def commit_file(self) -> None:
         """Execute all commit steps."""
-        for _ in commit_file_steps(Path(self.tempfile.name), self.filename):
-            pass
+        try:
+            for _ in commit_file_steps(Path(self.tempfile.name), self.filename):
+                pass
+        except PermissionError as e:
+            raise CommitPermissionError(f"Permission denied while committing changes to: {self.filename}") from e
+        except Exception as e:  # pragma: no cover
+            raise CommitError(f"Failed to commit changes to: {self.filename}") from e
 
 
 def make_elevated_permissions_sandbox(escalation_program: list[str]) -> type[FileSandbox]:
@@ -121,11 +144,17 @@ def make_elevated_permissions_sandbox(escalation_program: list[str]) -> type[Fil
             return subprocess.run(escalation_program + args, capture_output=True, check=True)
 
         def stage_file(self) -> None:
-            result = self._run_privileged(["cat", "--", str(self.filename)])
-            Path(self.tempfile.name).write_bytes(result.stdout)
+            try:
+                result = self._run_privileged(["cat", "--", str(self.filename)])
+                Path(self.tempfile.name).write_bytes(result.stdout)
+            except subprocess.CalledProcessError as e:  # pragma: no cover
+                raise StagingError(f"Failed to stage file with elevated privileges: {self.filename}") from e
 
         def commit_file(self) -> None:
-            for _ in elevated_commit_file_steps(Path(self.tempfile.name), self.filename, self._run_privileged):
-                pass
+            try:
+                for _ in elevated_commit_file_steps(Path(self.tempfile.name), self.filename, self._run_privileged):
+                    pass
+            except subprocess.CalledProcessError as e:  # pragma: no cover
+                raise CommitError(f"Failed to commit changes with elevated privileges to: {self.filename}") from e
 
     return ElevatedPermissionSandbox

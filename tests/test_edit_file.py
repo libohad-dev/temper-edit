@@ -12,7 +12,9 @@ from testcontainers.core.container import DockerContainer  # type: ignore[import
 from tests.masks import supermasks
 from tests.utils import (
     TEMPER_EDIT_SHELL_COMMAND,
+    check_exception_content,
     exec_as_user,
+    extract_log_filename,
     get_mtime_ns,
     list_container_files,
     parse_output,
@@ -107,13 +109,15 @@ def test_non_root_user_cannot_update_root_owned_file(container: DockerContainer)
     filename = "/tmp/file.txt"
     content = str(uuid.uuid4())
     container.exec(["touch", filename])
-    with pytest.raises(RuntimeError, match=r"PermissionError: \[Errno 1\] Operation not permitted:"):
+    with pytest.raises(RuntimeError, check=check_exception_content("Permission denied while committing")) as exc_info:
         _ = parse_output(
             exec_as_user(
                 command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'],
                 container=container,
             )
         )
+
+    assert exc_info.value.args[1] == 41
 
     stat = stat_file(container=container, filename=filename)
     assert stat.user == (0, "root"), "Wrong file user ownership"
@@ -140,7 +144,9 @@ def test_non_root_user_cannot_access_unreadable_file(container: DockerContainer)
 
     mtime_before = get_mtime_ns(container=container, filename=filename)
 
-    with pytest.raises(RuntimeError, match=r"PermissionError: \[Errno 13\] Permission denied:"):
+    with pytest.raises(
+        RuntimeError, check=check_exception_content("Permission denied: /tmp/unreadable.txt")
+    ) as exc_info:
         _ = parse_output(
             exec_as_user(
                 command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'],
@@ -148,10 +154,15 @@ def test_non_root_user_cannot_access_unreadable_file(container: DockerContainer)
             )
         )
 
+    assert exc_info.value.args[1] == 22
+
     mtime_after = get_mtime_ns(container=container, filename=filename)
 
-    # Verify no temporary files were left behind (staging failed, temp file should be cleaned up)
-    assert list_container_files(container, "/tmp") == {"/tmp/edit-file", filename}
+    # Staging errors clean up the tempfile, but a log file is still written
+    log_file = extract_log_filename(exc_info)
+    log_content = parse_output(container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
+    assert list_container_files(container, "/tmp") == {"/tmp/edit-file", filename, log_file}
 
     stat = stat_file(container=container, filename=filename)
     assert stat.user == (1000, "user"), "Wrong file user ownership"

@@ -6,12 +6,16 @@ import argparse
 import shlex
 import subprocess
 import sys
+import traceback
 from collections.abc import Mapping
 from logging import getLogger
 from pathlib import Path
+from tempfile import NamedTemporaryFile
+from typing import NoReturn
 
 from .atomic_edit import FileSandbox, LocalFSSandbox, make_elevated_permissions_sandbox
 from .config import EditorConfig
+from .exceptions import EditorError, PrivilegeEscalationError, TemperError
 from .utils import keep_keys
 
 logger = getLogger(__name__)
@@ -38,6 +42,30 @@ def detect_privilege_escalation(environ: Mapping[str, str]) -> str | None:
     return None
 
 
+def _handle_error(e: TemperError) -> NoReturn:
+    print(str(e), file=sys.stderr)
+    sys.exit(e.exit_code)
+
+
+def _handle_sandbox_error(e: TemperError, tempfile_path: str) -> NoReturn:
+    print(str(e), file=sys.stderr)
+    if Path(tempfile_path).exists():
+        print(f"Temporary file preserved at: {tempfile_path}", file=sys.stderr)
+    log_path = tempfile_path + ".log"
+    Path(log_path).write_text(traceback.format_exc())
+    print(f"Complete error log available at: {log_path}", file=sys.stderr)
+    sys.exit(e.exit_code)
+
+
+def _handle_unexpected_error(e: Exception) -> NoReturn:  # pragma: no cover
+    with NamedTemporaryFile(delete=False, suffix=".log", prefix="temper-edit-", mode="w") as log_file:
+        log_file.write(traceback.format_exc())
+        log_path = log_file.name
+    print(f"An unexpected error occurred: {e}", file=sys.stderr)
+    print(f"Complete error log available at: {log_path}", file=sys.stderr)
+    sys.exit(1)
+
+
 def main(
     filename: Path,
     editor_config: EditorConfig,
@@ -46,21 +74,26 @@ def main(
 ) -> subprocess.CompletedProcess[bytes]:
     from .editor import select_editor
 
-    editor = select_editor(editor_config)
+    try:
+        editor = select_editor(editor_config)
+    except TemperError as e:
+        _handle_error(e)
 
-    sandbox = sandbox_factory(filename=filename, tmpdir=tmpdir)
+    try:
+        sandbox = sandbox_factory(filename=filename, tmpdir=tmpdir)
+    except TemperError as e:
+        _handle_error(e)
+
     try:
         with sandbox as sandboxed_file:
-            res = subprocess.run(editor + [sandboxed_file.name], capture_output=True)
+            try:
+                res = subprocess.run(editor + [sandboxed_file.name], capture_output=True)
+            except FileNotFoundError as e:
+                raise EditorError(f"Editor not found: {editor[0]}") from e
             if res.returncode != 0:
-                print(f"Editor failed. Temporary file preserved at: {sandboxed_file.name}", file=sys.stderr)
-                raise RuntimeError(b"stderr: " + res.stderr + b" stdout: " + res.stdout, res.returncode)
-    except OSError as e:
-        print(
-            f"Failed to update file: {filename}. Temporary file preserved at: {sandbox.tempfile.name}",
-            file=sys.stderr,
-        )
-        raise
+                raise EditorError(f"Editor failed with exit code {res.returncode}")
+    except TemperError as e:
+        _handle_sandbox_error(e, sandbox.tempfile.name)
 
     return res
 
@@ -88,7 +121,7 @@ def run() -> None:
             f"To edit files requiring elevated permissions, use: temper-edit --elevate {escalation_program} <filename>",
             file=sys.stderr,
         )
-        sys.exit(1)
+        sys.exit(PrivilegeEscalationError.exit_code)
 
     parser = argparse.ArgumentParser("Edit a file atomically")
     parser.add_argument("filename", type=Path, help="File to edit")
@@ -112,11 +145,17 @@ def run() -> None:
     logger.debug("Loaded environment variables", extra=dict(env_config=json.dumps(env_config)))
     editor_config = EditorConfig.from_env(env_config)
 
-    sandbox_factory = select_sandbox_implementation(args)
+    try:
+        sandbox_factory = select_sandbox_implementation(args)
+    except TemperError as e:
+        _handle_error(e)
 
-    main(
-        filename=args.filename,
-        editor_config=editor_config,
-        tmpdir=args.tmpdir,
-        sandbox_factory=sandbox_factory,
-    )
+    try:
+        main(
+            filename=args.filename,
+            editor_config=editor_config,
+            tmpdir=args.tmpdir,
+            sandbox_factory=sandbox_factory,
+        )
+    except Exception as e:  # pragma: no cover
+        _handle_unexpected_error(e)

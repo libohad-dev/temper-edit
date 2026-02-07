@@ -90,7 +90,16 @@ def list_container_files(container: DockerContainer, directory: str) -> set[str]
 def extract_preserved_temporary_filename(exc_info: pytest.ExceptionInfo[RuntimeError]) -> str:
     # Validate error message format and extract preserved temp file path
     error_output = exc_info.value.args[0].decode("utf-8")
-    match = re.search(r"Temporary file preserved at: (?P<tempfile>/tmp/\S+)", error_output)
+    match = re.search(r"Temporary file preserved at: (?P<tempfile>\S+)", error_output)
     assert match is not None, f"Error message should contain preserved temp file path, got: {error_output}"
 
     return match["tempfile"]
+
+
+def extract_log_filename(exc_info: pytest.ExceptionInfo[RuntimeError]) -> str:
+    """Extract the log file path from error output."""
+    error_output = exc_info.value.args[0].decode("utf-8")
+    match = re.search(r"Complete error log available at: (?P<logfile>\S+)", error_output)
+    assert match is not None, f"Error message should contain log file path, got: {error_output}"
+
+    return match["logfile"]

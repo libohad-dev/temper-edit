@@ -45,7 +45,11 @@ depends_on = [
 
 [[modules]]
 path = "temper_edit.atomic_edit"
-depends_on = []
+depends_on = [
+    # keep-sorted start
+    "temper_edit.exceptions",
+    # keep-sorted end
+]
 
 [[modules]]
 path = "temper_edit.s3"
@@ -63,6 +67,7 @@ depends_on = [
     "temper_edit.atomic_edit",
     "temper_edit.config",
     "temper_edit.editor",
+    "temper_edit.exceptions",
     "temper_edit.s3",
     "temper_edit.utils",
     # keep-sorted end

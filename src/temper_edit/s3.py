@@ -6,12 +6,20 @@ from pathlib import Path
 from typing import Any
 
 from .atomic_edit import FileSandbox
-from .exceptions import ConcurrentModificationError
+from .exceptions import (
+    CommitError,
+    CommitPermissionError,
+    ConcurrentModificationError,
+    DependencyError,
+    StagingError,
+    StagingFileNotFoundError,
+    StagingPermissionError,
+)
 
 try:
     import boto3
 except ImportError as e:
-    raise ImportError("S3 support requires boto3. Install with: pip install temper-edit[s3]") from e
+    raise DependencyError("S3 support requires boto3. Install with: pip install temper-edit[s3]") from e
 
 
 # Note: S3 conditional writes (If-Match header) were added in November 2024.
@@ -28,12 +36,23 @@ def make_s3_sandbox(bucket: str, force: bool = False) -> type[FileSandbox]:
             self.s3_client = boto3.client("s3")
 
         def stage_file(self) -> None:
+            from botocore.exceptions import ClientError
+
             key = str(self.filename)
-            head_response = self.s3_client.head_object(Bucket=bucket, Key=key)
-            self.original_metadata: dict[str, str] = head_response.get("Metadata", {})
-            self.original_content_type: str | None = head_response.get("ContentType")
-            self.original_etag: str | None = head_response.get("ETag")
-            self.s3_client.download_file(Bucket=bucket, Key=key, Filename=self.tempfile.name)
+            try:
+                head_response = self.s3_client.head_object(Bucket=bucket, Key=key)
+                self.original_metadata: dict[str, str] = head_response.get("Metadata", {})
+                self.original_content_type: str | None = head_response.get("ContentType")
+                self.original_etag: str | None = head_response.get("ETag")
+                self.s3_client.download_file(Bucket=bucket, Key=key, Filename=self.tempfile.name)
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "")
+                if error_code in ("404", "NoSuchKey"):
+                    raise StagingFileNotFoundError(f"S3 object not found: s3://{bucket}/{key}") from e
+                elif error_code in ("403", "AccessDenied"):
+                    raise StagingPermissionError(f"Access denied: s3://{bucket}/{key}") from e
+                else:  # pragma: no cover
+                    raise StagingError(f"Failed to stage S3 object: s3://{bucket}/{key}") from e
 
         def commit_file(self) -> None:
             from botocore.exceptions import ClientError
@@ -69,7 +88,12 @@ def make_s3_sandbox(bucket: str, force: bool = False) -> type[FileSandbox]:
                     raise ConcurrentModificationError(
                         "Object was modified by another process (concurrent modification detected)"
                     ) from e
-                raise
+                elif error_code in ("403", "AccessDenied"):
+                    raise CommitPermissionError(
+                        f"Access denied while committing: s3://{bucket}/{str(self.filename)}"
+                    ) from e
+                else:  # pragma: no cover
+                    raise CommitError(f"Failed to commit S3 object: s3://{bucket}/{str(self.filename)}") from e
 
             # Clean up the tempfile after successful commit
             Path(self.tempfile.name).unlink()

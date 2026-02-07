@@ -11,7 +11,9 @@ from testcontainers.core.container import DockerContainer  # type: ignore[import
 
 from tests.utils import (
     TEMPER_EDIT_SHELL_COMMAND,
+    check_exception_content,
     exec_as_user,
+    extract_log_filename,
     extract_preserved_temporary_filename,
     get_mtime_ns,
     list_container_files,
@@ -86,10 +88,12 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
 
     mtime_before = get_mtime_ns(container=container, filename=filename)
 
-    with pytest.raises(RuntimeError, match="Editor failed. Temporary file preserved at:") as exc_info:
+    with pytest.raises(RuntimeError, check=check_exception_content("Editor failed with exit code 1")) as exc_info:
         _ = parse_output(
             container.exec(["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'])
         )
+
+    assert exc_info.value.args[1] == 30
 
     mtime_after = get_mtime_ns(container=container, filename=filename)
 
@@ -102,8 +106,18 @@ def test_original_file_is_not_modified_when_the_editor_fails(container: DockerCo
 
     # Verify temporary file was preserved and contains the expected content
     tempfile = extract_preserved_temporary_filename(exc_info)
-    assert list_container_files(container=container, directory="/tmp") == {"/tmp/file.txt", "/tmp/edit-file", tempfile}
+    log_file = extract_log_filename(exc_info)
+    assert list_container_files(container=container, directory="/tmp") == {
+        "/tmp/file.txt",
+        "/tmp/edit-file",
+        tempfile,
+        log_file,
+    }
     assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
+
+    # Verify log file contains traceback
+    log_content = parse_output(container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
 
 
 def test_temporary_file_is_preserved_on_update_failure(container: DockerContainer) -> None:
@@ -124,13 +138,15 @@ def test_temporary_file_is_preserved_on_update_failure(container: DockerContaine
 
     mtime_before = get_mtime_ns(container=container, filename=filename)
 
-    with pytest.raises(RuntimeError, match=f"Failed to update file: {filename}") as exc_info:
+    with pytest.raises(RuntimeError, check=check_exception_content("Permission denied while committing")) as exc_info:
         _ = parse_output(
             exec_as_user(
                 command=["sh", "-c", f'EDITOR="/tmp/edit-file {content}" {TEMPER_EDIT_SHELL_COMMAND} {filename}'],
                 container=container,
             )
         )
+
+    assert exc_info.value.args[1] == 41
 
     mtime_after = get_mtime_ns(container=container, filename=filename)
 
@@ -143,13 +159,19 @@ def test_temporary_file_is_preserved_on_update_failure(container: DockerContaine
 
     # Verify temporary file was preserved and contains the edited content
     tempfile = extract_preserved_temporary_filename(exc_info)
+    log_file = extract_log_filename(exc_info)
     assert list_container_files(container=container, directory="/tmp") == {
         "/tmp/edit-file",
         "/tmp/readonly-dir",
         tempfile,
+        log_file,
     }
     assert list_container_files(container=container, directory="/tmp/readonly-dir") == {filename}
     assert parse_output(container.exec(["cat", tempfile])) == content, "Preserved temp file has wrong content"
+
+    # Verify log file contains traceback
+    log_content = parse_output(container.exec(["cat", log_file]))
+    assert "Traceback" in log_content
 
 
 def test_original_file_is_not_modified_when_content_unchanged(container: DockerContainer) -> None:

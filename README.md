@@ -133,8 +133,17 @@ temper-edit --elevate "sudo --askpass" /etc/hosts
 | Code | Meaning |
 |------|---------|
 | 0 | Success |
-| 1 | Refused to run with escalated privileges, or editor not configured |
-| Non-zero | Editor failed (exit code propagated) |
+| 1 | Unexpected error |
+| 10 | Configuration error (no editor configured, bad tmpdir) |
+| 11 | Privilege escalation detected (running under `sudo`/`doas`/`pkexec`) |
+| 12 | Missing optional dependency (e.g., `boto3` for S3 support) |
+| 20 | Staging failed |
+| 21 | File not found during staging |
+| 22 | Permission denied during staging |
+| 30 | Editor failed (not found or non-zero exit) |
+| 40 | Commit failed |
+| 41 | Permission denied during commit |
+| 42 | Concurrent modification detected (S3 only) |
 
 ### S3 Editing
 
