@@ -87,7 +87,7 @@ def main(
     try:
         with sandbox as sandboxed_file:
             try:
-                res = subprocess.run(editor + [sandboxed_file.name], capture_output=True)
+                res = subprocess.run(editor + [sandboxed_file.name])
             except FileNotFoundError as e:
                 raise EditorError(f"Editor not found: {editor[0]}") from e
             if res.returncode != 0:
