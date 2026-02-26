@@ -224,6 +224,6 @@ This project is distributed under the terms of [GPL-3.0-or-later](https://spdx.o
 - [CC-BY-SA-4.0](https://spdx.org/licenses/CC-BY-SA-4.0.html) for documentation files
 - [CC0-1.0](https://spdx.org/licenses/CC0-1.0.html) (equivalent to public domain) for project configuration files
 
-The [REUSE](https://reuse.software/) tools is used to ensure license compliance.
+The [REUSE](https://reuse.software/) tool is used to ensure license compliance.
 
 © 2025-2026 [Ohad Livne](https://github.com/libohad-dev)
