@@ -32,7 +32,24 @@ classifiers = [
   "Typing :: Typed",
   # keep-sorted end
 ]
+keywords = [
+  # keep-sorted start
+  "atomic",
+  "cli",
+  "edit",
+  "editor",
+  "s3",
+  "safe",
+  "sudoedit",
+  "temporary",
+  # keep-sorted end
+]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/libohad-dev/temper-edit"
+Source = "https://github.com/libohad-dev/temper-edit"
+Issues = "https://github.com/libohad-dev/temper-edit/issues"
 
 [project.optional-dependencies]
 s3 = ["boto3>=1.26"]
