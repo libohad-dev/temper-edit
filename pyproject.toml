@@ -10,7 +10,7 @@ authors = [
   {name = "Ohad Livne", email = "libohad-dev@proton.me"}
 ]
 license = "GPL-3.0-or-later"
-license-files = ["LICENSES"]
+license-files = ["LICENSE", "LICENSES/*.txt"]
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
