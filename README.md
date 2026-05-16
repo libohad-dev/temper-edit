@@ -33,22 +33,16 @@ temper-edit is a command-line tool that performs atomic file editing through a t
 - Python 3.10 or later
 - No runtime dependencies (S3 support requires optional `boto3` dependency)
 
-### From Source
+### From PyPI
 
 ```bash
-pip install .
+pip install temper-edit
 ```
 
 ### With S3 Support
 
 ```bash
-pip install ".[s3]"
-```
-
-### Development Installation
-
-```bash
-pip install --editable ".[dev]"
+pip install "temper-edit[s3]"
 ```
 
 ## Usage
